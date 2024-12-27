@@ -9,6 +9,7 @@ import os
 import re
 import sqlite3 as sql
 from time import sleep, time
+import zipfile
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from nadeo_api import auth, core, live, oauth
@@ -36,7 +37,7 @@ def error(func: str, e: Exception) -> None:
 
     DiscordWebhook(
         os.environ['dcwh-site-backend-errors'],
-        content=f'<@174350279158792192>\n`{func}()`\n`{type(e)}`\n`{e}`'
+        content=f'<@174350279158792192>\n`{now(False)}`\n`{func}()`\n`{type(e)}`\n`{e}`'
     ).execute()
 
 
@@ -116,12 +117,35 @@ def now(brackets: bool = True) -> str:
     return f'{'[' if brackets else ''}{utc} ({denver}, {paris}){']' if brackets else ''}'
 
 
+def read_db_key_val(key: str) -> str:
+    # log(f'called read_db_key_val({key})')
+
+    try:
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+            return cur.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
+
+    except TypeError as e:
+        log(f'(silent) read_db_key_val({key}) TypeError {e}')
+        return ''
+
+    except Exception as e:
+        error('read_db_key_val', e)
+        return ''
+
+
 def schedule_campaign_maps(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_campaign_maps({tokens})')
 
     try:
         sleep(1)
         maps_campaign: dict = live.maps_campaign(tokens['live'], 99)
+
+        if os.path.isfile(file_campaign_raw):
+            ts: int = int(time())
+            with zipfile.ZipFile(f'{par_dir}/data/history/campaign_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+                zip.write(file_campaign_raw, 'campaign_raw.json')
+
         with open(file_campaign_raw, 'w', newline='\n') as f:
             json.dump(maps_campaign, f, indent=4)
             f.write('\n')
@@ -136,8 +160,48 @@ def schedule_campaign_warriors(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_campaign_warriors({tokens})')
 
 
+def schedule_royal_maps(tokens: dict[auth.Token]) -> None:
+    log(f'called schedule_royal_maps({tokens})')
+
+    try:
+        sleep(1)
+        maps_royal: dict = live.maps_royal(tokens['live'], 99)
+
+        if os.path.isfile(file_royal_raw):
+            ts: int = int(time())
+            with zipfile.ZipFile(f'{par_dir}/data/history/royal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+                zip.write(file_royal_raw, 'royal_raw.json')
+
+        with open(file_royal_raw, 'w', newline='\n') as f:
+            json.dump(maps_royal, f, indent=4)
+            f.write('\n')
+
+        write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
+
+    except Exception as e:
+        error('schedule_royal_maps', e)
+
+
 def schedule_totd_map(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_totd_map({tokens})')
+
+    try:
+        sleep(1)
+        maps_totd: dict = live.maps_totd(tokens['live'], 99)
+
+        if os.path.isfile(file_totd_raw):
+            ts: int = int(time())
+            with zipfile.ZipFile(f'{par_dir}/data/history/totd_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+                zip.write(file_totd_raw, 'totd_raw.json')
+
+        with open(file_totd_raw, 'w', newline='\n') as f:
+            json.dump(maps_totd, f, indent=4)
+            f.write('\n')
+
+        write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
+
+    except Exception as e:
+        error('schedule_totd_map', e)
 
 
 def schedule_totd_warrior(tokens: dict[auth.Token]) -> None:
@@ -146,6 +210,24 @@ def schedule_totd_warrior(tokens: dict[auth.Token]) -> None:
 
 def schedule_weekly_maps(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_weekly_maps({tokens})')
+
+    try:
+        sleep(1)
+        maps_weekly: dict = live.get(tokens['live'], 'api/campaign/weekly-shorts?length=99')
+
+        if os.path.isfile(file_weekly_raw):
+            ts: int = int(time())
+            with zipfile.ZipFile(f'{par_dir}/data/history/weekly_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+                zip.write(file_weekly_raw, 'weekly_raw.json')
+
+        with open(file_weekly_raw, 'w', newline='\n') as f:
+            json.dump(maps_weekly, f, indent=4)
+            f.write('\n')
+
+        write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
+
+    except Exception as e:
+        error('schedule_weekly_maps', e)
 
 
 def schedule_weekly_warriors(tokens: dict[auth.Token]) -> None:
@@ -160,11 +242,15 @@ def strip_format_codes(raw: str) -> str:
 def write_db_key_val(key: str, val) -> None:
     log(f'called write_db_key_val({key}, {val})')
 
-    with sql.connect(file_db) as con:
-        cur: sql.Cursor = con.cursor()
-        cur.execute('BEGIN')
-        cur.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
-        cur.execute(f'INSERT INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
+    try:
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+            cur.execute('BEGIN')
+            cur.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
+            cur.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
+
+    except Exception as e:
+        error('write_db_key_val', e)
 
 
 def main() -> None:
@@ -172,11 +258,28 @@ def main() -> None:
 
     while True:
         sleep(1)
-        now: int = time()
+        print(f'{now()} loop')
+        ts: int = int(time())
 
-        # if now >= next_campaign:
-        if True:
+        val: str = read_db_key_val('next_weekly')
+        next_weekly: int = int(val) if len(val) > 0 else 0
+        if ts >= next_weekly:
+            schedule_weekly_maps(tokens)
+
+        val = read_db_key_val('next_campaign')
+        next_campaign: int = int(val) if len(val) > 0 else 0
+        if ts >= next_campaign:
             schedule_campaign_maps(tokens)
+
+        val = read_db_key_val('next_totd')
+        next_totd: int = int(val) if len(val) > 0 else 0
+        if ts >= next_totd:
+            schedule_totd_map(tokens)
+
+        val = read_db_key_val('next_royal')
+        next_royal: int = int(val) if len(val) > 0 else 0
+        if ts >= next_royal:
+            schedule_royal_maps(tokens)
 
         pass
 

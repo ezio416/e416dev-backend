@@ -1,11 +1,10 @@
 # Extensions
-*.db
-*.log
 
 # Files
 
 # Folders
-env/
 __pycache__/
+data/
+env/
 
 # Various
