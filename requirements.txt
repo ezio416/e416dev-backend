@@ -1,0 +1,4 @@
+discord-webhook
+nadeo-api
+pytz
+requests
