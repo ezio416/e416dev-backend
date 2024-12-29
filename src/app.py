@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2024-12-27
+# m 2024-12-29
 
 from base64 import b64encode
 from datetime import datetime as dt
@@ -17,20 +17,20 @@ from pytz import timezone as tz
 from requests import get, put, Response
 
 
-par_dir:           str = f'{os.path.dirname(__file__)}/..'
-file_campaign:     str = f'{par_dir}/data/campaign.json'
-file_campaign_raw: str = f'{par_dir}/data/campaign_raw.json'
-file_db:           str = f'{par_dir}/data/tm.db'
-file_log:          str = f'{par_dir}/data/tm.log'
-file_royal:        str = f'{par_dir}/data/royal.json'
-file_royal_raw:    str = f'{par_dir}/data/royal_raw.json'
-file_totd:         str = f'{par_dir}/data/totd.json'
-file_totd_raw:     str = f'{par_dir}/data/totd_raw.json'
-file_warrior:      str = f'{par_dir}/data/warrior.json'
-file_weekly:       str = f'{par_dir}/data/weekly.json'
-file_weekly_raw:   str = f'{par_dir}/data/weekly_raw.json'
-file_zone:         str = f'{par_dir}/data/zone.json'
-
+par_dir:           str   = f'{os.path.dirname(__file__)}/..'
+file_seasonal:     str   = f'{par_dir}/data/seasonal.json'
+file_seasonal_raw: str   = f'{par_dir}/data/seasonal_raw.json'
+file_db:           str   = f'{par_dir}/data/tm.db'
+file_log:          str   = f'{par_dir}/data/tm.log'
+file_royal:        str   = f'{par_dir}/data/royal.json'
+file_royal_raw:    str   = f'{par_dir}/data/royal_raw.json'
+file_totd:         str   = f'{par_dir}/data/totd.json'
+file_totd_raw:     str   = f'{par_dir}/data/totd_raw.json'
+file_warrior:      str   = f'{par_dir}/data/warrior.json'
+file_weekly:       str   = f'{par_dir}/data/weekly.json'
+file_weekly_raw:   str   = f'{par_dir}/data/weekly_raw.json'
+file_zone:         str   = f'{par_dir}/data/zone.json'
+wait_time:         float = 0.5
 
 def error(func: str, e: Exception) -> None:
     log(f'{func} error: {type(e)} | {e}')
@@ -88,8 +88,8 @@ def get_warrior_time(author_time: int, world_record: int, factor: float | None =
         - between `0.0` and `1.0`
         - examples, given AT is `10.000` and WR is `8.000`:
             - `0.000` - AT (`10.000`)
-            - `0.125` - 1/8 of the way between AT and WR (`9.750`) (default for TOTDs)
-            - `0.250` - 1/4 of the way between AT and WR (`9.500`) (default, default for campaigns)
+            - `0.125` - 1/8 of the way between AT and WR (`9.750`) (default for TOTD)
+            - `0.250` - 1/4 of the way between AT and WR (`9.500`) (default, default for seasonal)
             - `0.750` - 3/4 of the way between AT and WR (`8.500`)
             - `1.000` - WR (`8.000`)
     '''
@@ -110,6 +110,80 @@ def log(msg: str, print_term: bool = True) -> None:
         f.write(f'{text}\n')
 
 
+def map_info_seasonal(tokens: dict[auth.Token]) -> None:
+    log(f'called map_info_seasonal()')
+
+    maps_by_uid: dict = {}
+    uid_groups:  list = []
+    uid_limit:   int  = 270
+    uids:        list = []
+
+    try:
+        with sql.connect(file_db) as con:
+            con.row_factory = sql.Row
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for entry in cur.execute('SELECT * FROM Seasonal').fetchall():
+                map: dict = dict(entry)
+                maps_by_uid[map['mapUid']] = map
+
+        uids = list(maps_by_uid)
+        while True:
+            if len(uids) > uid_limit:
+                uid_groups.append(','.join(uids[:uid_limit]))
+                uids = uids[uid_limit:]
+            else:
+                uid_groups.append(','.join(uids))
+                break
+
+        for i, group in enumerate(uid_groups):
+            log(f'map_info_seasonal {i + 1}/{len(uid_groups)} groups...')
+
+            sleep(wait_time)
+            info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
+
+            for entry in info:
+                map: dict = maps_by_uid[entry['mapUid']]
+
+                map['author']          = entry['author']
+                map['authorTime']      = entry['authorScore']
+                map['bronzeTime']      = entry['bronzeScore']
+                map['downloadUrl']     = entry['fileUrl']
+                map['goldTime']        = entry['goldScore']
+                map['mapId']           = entry['mapId']
+                map['name']            = entry['name']
+                map['silverTime']      = entry['silverScore']
+                map['submitter']       = entry['submitter']
+                map['thumbnailUrl']    = entry['thumbnailUrl']
+                map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
+
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for uid, map in maps_by_uid.items():
+                cur.execute(f'''
+                    UPDATE Seasonal
+                    SET author          = "{map['author']}",
+                        authorTime      = "{map['authorTime']}",
+                        bronzeTime      = "{map['bronzeTime']}",
+                        downloadUrl     = "{map['downloadUrl']}",
+                        goldTime        = "{map['goldTime']}",
+                        mapId           = "{map['mapId']}",
+                        name            = "{map['name']}",
+                        silverTime      = "{map['silverTime']}",
+                        submitter       = "{map['submitter']}",
+                        thumbnailUrl    = "{map['thumbnailUrl']}",
+                        timestampUpload = "{map['timestampUpload']}"
+                    WHERE mapUid = "{uid}"
+                    ;
+                ''')
+
+    except Exception as e:
+        error('map_info_seasonal', e)
+
+
 def now(brackets: bool = True) -> str:
     utc    = dt.now(tz('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     denver = f'Denver {dt.now(tz('America/Denver')).strftime('%H:%M')}'
@@ -126,7 +200,7 @@ def read_db_key_val(key: str) -> str:
             return cur.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
 
     except TypeError as e:
-        log(f'(silent) read_db_key_val({key}) TypeError {e}')
+        log(f"(silent) read_db_key_val('{key}') TypeError {e}")
         return ''
 
     except Exception as e:
@@ -134,37 +208,11 @@ def read_db_key_val(key: str) -> str:
         return ''
 
 
-def schedule_campaign_maps(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_campaign_maps({tokens})')
-
-    try:
-        sleep(1)
-        maps_campaign: dict = live.maps_campaign(tokens['live'], 99)
-
-        if os.path.isfile(file_campaign_raw):
-            ts: int = int(time())
-            with zipfile.ZipFile(f'{par_dir}/data/history/campaign_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
-                zip.write(file_campaign_raw, 'campaign_raw.json')
-
-        with open(file_campaign_raw, 'w', newline='\n') as f:
-            json.dump(maps_campaign, f, indent=4)
-            f.write('\n')
-
-        write_db_key_val('next_campaign', maps_campaign['nextRequestTimestamp'])
-
-    except Exception as e:
-        error('schedule_campaign_maps', e)
-
-
-def schedule_campaign_warriors(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_campaign_warriors({tokens})')
-
-
 def schedule_royal_maps(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_royal_maps({tokens})')
 
     try:
-        sleep(1)
+        sleep(wait_time)
         maps_royal: dict = live.maps_royal(tokens['live'], 99)
 
         if os.path.isfile(file_royal_raw):
@@ -182,11 +230,112 @@ def schedule_royal_maps(tokens: dict[auth.Token]) -> None:
         error('schedule_royal_maps', e)
 
 
+def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
+    log(f'called schedule_seasonal_maps({tokens})')
+
+    try:
+        sleep(wait_time)
+        maps_seasonal: dict = live.maps_campaign(tokens['live'], 99)
+
+        if os.path.isfile(file_seasonal_raw):
+            ts: int = int(time())
+            with zipfile.ZipFile(f'{par_dir}/data/history/seasonal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+                zip.write(file_seasonal_raw, 'seasonal_raw.json')
+
+        with open(file_seasonal_raw, 'w', newline='\n') as f:
+            json.dump(maps_seasonal, f, indent=4)
+            f.write('\n')
+
+        write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            cur.execute('DROP TABLE IF EXISTS Seasonal')
+            cur.execute(f'''
+                CREATE TABLE IF NOT EXISTS Seasonal (
+                    author               CHAR(36),
+                    authorTime           INT,
+                    bronzeTime           INT,
+                    campaignId           INT,
+                    campaignIndex        INT,
+                    downloadUrl          CHAR(86),
+                    goldTime             INT,
+                    leaderboardGroupUid  CHAR(36),
+                    mapId                CHAR(36),
+                    mapIndex             INT,
+                    mapUid               VARCHAR(27) PRIMARY KEY,
+                    name                 VARCHAR(16),
+                    seasonUid            CHAR(36),
+                    silverTime           INT,
+                    submitter            CHAR(36),
+                    thumbnailUrl         CHAR(90),
+                    timestampEdition     INT,
+                    timestampEnd         INT,
+                    timestampPublished   INT,
+                    timestampRankingSent INT,
+                    timestampStart       INT,
+                    timestampUpload      INT
+                );
+            ''')
+
+            for i, campaign in enumerate(reversed(maps_seasonal['campaignList'])):
+                campaignId:           int        = campaign['id']
+                campaignIndex:        int        = i
+                leaderboardGroupUid:  str        = campaign['leaderboardGroupUid']
+                seasonUid:            str        = campaign['seasonUid']
+                timestampEdition:     int        = campaign['editionTimestamp']
+                timestampEnd:         int        = campaign['endTimestamp']
+                timestampPublished:   int        = campaign['publicationTimestamp']
+                timestampRankingSent: int | None = campaign['rankingSentTimestamp']
+                timestampStart:       int        = campaign['startTimestamp']
+
+                for map in campaign['playlist']:
+                    mapIndex: int = map['position']
+                    mapUid:   str = map['mapUid']
+
+                    cur.execute(f'''
+                        INSERT INTO Seasonal (
+                            campaignId,
+                            campaignIndex,
+                            leaderboardGroupUid,
+                            mapIndex,
+                            mapUid,
+                            seasonUid,
+                            timestampEdition,
+                            timestampEnd,
+                            timestampPublished,
+                            timestampRankingSent,
+                            timestampStart
+                        ) VALUES (
+                            "{campaignId}",
+                            "{campaignIndex}",
+                            "{leaderboardGroupUid}",
+                            "{mapIndex}",
+                            "{mapUid}",
+                            "{seasonUid}",
+                            "{timestampEdition}",
+                            "{timestampEnd}",
+                            "{timestampPublished}",
+                            {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
+                            "{timestampStart}"
+                        )
+                    ''')
+
+    except Exception as e:
+        error('schedule_seasonal_maps', e)
+
+
+def schedule_seasonal_warriors(tokens: dict[auth.Token]) -> None:
+    log(f'called schedule_seasonal_warriors({tokens})')
+
+
 def schedule_totd_map(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_totd_map({tokens})')
 
     try:
-        sleep(1)
+        sleep(wait_time)
         maps_totd: dict = live.maps_totd(tokens['live'], 99)
 
         if os.path.isfile(file_totd_raw):
@@ -212,7 +361,7 @@ def schedule_weekly_maps(tokens: dict[auth.Token]) -> None:
     log(f'called schedule_weekly_maps({tokens})')
 
     try:
-        sleep(1)
+        sleep(wait_time)
         maps_weekly: dict = live.get(tokens['live'], 'api/campaign/weekly-shorts?length=99')
 
         if os.path.isfile(file_weekly_raw):
@@ -240,7 +389,7 @@ def strip_format_codes(raw: str) -> str:
 
 
 def write_db_key_val(key: str, val) -> None:
-    log(f'called write_db_key_val({key}, {val})')
+    log(f"called write_db_key_val('{key}', '{val}')")
 
     try:
         with sql.connect(file_db) as con:
@@ -266,10 +415,11 @@ def main() -> None:
         if ts >= next_weekly:
             schedule_weekly_maps(tokens)
 
-        val = read_db_key_val('next_campaign')
-        next_campaign: int = int(val) if len(val) > 0 else 0
-        if ts >= next_campaign:
-            schedule_campaign_maps(tokens)
+        val = read_db_key_val('next_seasonal')
+        next_seasonal: int = int(val) if len(val) > 0 else 0
+        if ts >= next_seasonal:
+            schedule_seasonal_maps(tokens)
+            map_info_seasonal(tokens)
 
         val = read_db_key_val('next_totd')
         next_totd: int = int(val) if len(val) > 0 else 0
