@@ -388,6 +388,52 @@ def strip_format_codes(raw: str) -> str:
     return re.sub(r'\$([0-9a-fA-F]{1,3}|[iIoOnNmMwWsSzZtTgG<>]|[lLhHpP](\[[^\]]+\])?)', '', raw).strip()
 
 
+def webhook_seasonal_maps() -> None:
+    log(f'called webhook_seasonal_maps()')
+
+    maps: list[dict] = []
+    series: tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
+
+    try:
+        with sql.connect(file_db) as con:
+            con.row_factory = sql.Row
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for entry in cur.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
+                maps.append(dict(entry))
+
+        for map in maps:
+            sleep(1)
+
+            webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-seasonal-updates'])
+
+            embed: DiscordEmbed = DiscordEmbed(
+                strip_format_codes(map['name']),
+                color=series[int(map['mapIndex'] / 5)]
+            )
+
+            embed.add_embed_field(
+                'Medals',
+                f'''
+<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
+<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
+<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
+<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
+''',
+                False
+            )
+
+            embed.add_embed_field('Links', f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})')
+
+            embed.set_thumbnail(map['thumbnailUrl'])
+            webhook.add_embed(embed)
+            webhook.execute()
+
+    except Exception as e:
+        error('webhook_seasonal_maps', e)
+
+
 def write_db_key_val(key: str, val) -> None:
     log(f"called write_db_key_val('{key}', '{val}')")
 
@@ -420,6 +466,7 @@ def main() -> None:
         if ts >= next_seasonal:
             schedule_seasonal_maps(tokens)
             map_info_seasonal(tokens)
+            webhook_seasonal_maps()
 
         val = read_db_key_val('next_totd')
         next_totd: int = int(val) if len(val) > 0 else 0
