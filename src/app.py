@@ -420,8 +420,8 @@ def schedule_seasonal_warriors() -> None:
     log('called schedule_seasonal_warriors()')
 
 
-def schedule_totd_map() -> None:
-    log('called schedule_totd_map()')
+def schedule_totd_maps() -> None:
+    log('called schedule_totd_maps()')
 
     try:
         sleep(wait_time)
@@ -439,8 +439,66 @@ def schedule_totd_map() -> None:
         write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
         write_db_key_val('warrior_totd', maps_totd['nextRequestTimestamp'] + 7200)  # +2 hours
 
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            cur.execute('DROP TABLE IF EXISTS Totd')
+            cur.execute(f'''
+                CREATE TABLE IF NOT EXISTS Totd (
+                    author               CHAR(36),
+                    authorTime           INT,
+                    bronzeTime           INT,
+                    campaignId           INT,
+                    downloadUrl          CHAR(86),
+                    goldTime             INT,
+                    mapId                CHAR(36),
+                    mapUid               VARCHAR(27) PRIMARY KEY,
+                    month                INT,
+                    monthDay             INT,
+                    name                 TEXT,
+                    seasonUid            CHAR(36),
+                    silverTime           INT,
+                    submitter            CHAR(36),
+                    thumbnailUrl         CHAR(90),
+                    timestampEnd         INT,
+                    timestampStart       INT,
+                    timestampUpload      INT,
+                    weekDay              INT,
+                    year                 INT
+                );
+            ''')
+
+            for month in reversed(maps_totd['monthList']):
+                for map in month['days']:
+                    mapUid: str = map['mapUid']
+                    if len(mapUid) == 0:
+                        break
+
+                    cur.execute(f'''
+                        INSERT INTO Totd (
+                            mapUid,
+                            month,
+                            monthDay,
+                            seasonUid,
+                            timestampEnd,
+                            timestampStart,
+                            weekDay,
+                            year
+                        ) VALUES (
+                            "{mapUid}",
+                            "{month['month']}",
+                            "{map['monthDay']}",
+                            "{map['seasonUid']}",
+                            "{map['endTimestamp']}",
+                            "{map['startTimestamp']}",
+                            "{map['day']}",
+                            "{month['year']}"
+                        )
+                    ''')
+
     except Exception as e:
-        error('schedule_totd_map', e)
+        error('schedule_totd_maps', e)
 
 
 def schedule_totd_warrior() -> None:
@@ -668,7 +726,7 @@ def main() -> None:
 
         val = read_db_key_val('next_totd')
         if ts > (int(val) if len(val) > 0 else 0):
-            schedule_totd_map()
+            schedule_totd_maps()
 
         val = read_db_key_val('next_royal')
         if ts > (int(val) if len(val) > 0 else 0):
