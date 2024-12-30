@@ -17,6 +17,8 @@ from pytz import timezone as tz
 from requests import get, put, Response
 
 
+accounts:          dict  = {}
+tokens:            dict  = {}
 par_dir:           str   = f'{os.path.dirname(__file__)}/..'
 file_seasonal:     str   = f'{par_dir}/data/seasonal.json'
 file_seasonal_raw: str   = f'{par_dir}/data/seasonal_raw.json'
@@ -47,6 +49,29 @@ def format_race_time(input_ms: int) -> str:
     ms:  int = input_ms % 1000
 
     return f'{min}:{str(sec).zfill(2)}.{str(ms).zfill(3)}'
+
+
+def get_account_name(account_id: str) -> str:
+    log(f"called get_account_name('{account_id}')")
+
+    global accounts
+
+    ts: int = int(time())
+
+    if account_id in accounts and ts < accounts[account_id]['ts']:
+        return accounts[account_id]['name']
+
+    sleep(wait_time)
+    req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+
+    name: str = req[account_id]
+    accounts[account_id] = {}
+    accounts[account_id]['name'] = name
+    accounts[account_id]['ts'] = ts + 3600  # keep valid for 1 hour
+
+    log(f"get_account_name('{account_id}'): {name}")
+
+    return name
 
 
 def get_tokens() -> dict:
@@ -110,7 +135,7 @@ def log(msg: str, print_term: bool = True) -> None:
         f.write(f'{text}\n')
 
 
-def map_info_seasonal(tokens: dict[auth.Token]) -> None:
+def map_info_seasonal() -> None:
     log(f'called map_info_seasonal()')
 
     maps_by_uid: dict = {}
@@ -184,7 +209,7 @@ def map_info_seasonal(tokens: dict[auth.Token]) -> None:
         error('map_info_seasonal', e)
 
 
-def map_info_weekly(tokens: dict[auth.Token]) -> None:
+def map_info_weekly() -> None:
     log(f'called map_info_weekly()')
 
     maps_by_uid: dict = {}
@@ -282,8 +307,8 @@ def read_db_key_val(key: str) -> str:
         return ''
 
 
-def schedule_royal_maps(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_royal_maps({tokens})')
+def schedule_royal_maps() -> None:
+    log('called schedule_royal_maps()')
 
     try:
         sleep(wait_time)
@@ -298,14 +323,14 @@ def schedule_royal_maps(tokens: dict[auth.Token]) -> None:
             json.dump(maps_royal, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'] + 1)
+        write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
 
     except Exception as e:
         error('schedule_royal_maps', e)
 
 
-def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_seasonal_maps({tokens})')
+def schedule_seasonal_maps() -> None:
+    log('called schedule_seasonal_maps()')
 
     try:
         sleep(wait_time)
@@ -320,7 +345,7 @@ def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
             json.dump(maps_seasonal, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'] + 1)
+        write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
         write_db_key_val('warrior_seasonal', maps_seasonal['nextRequestTimestamp'] + 1209600)  # +2 weeks
 
         with sql.connect(file_db) as con:
@@ -391,12 +416,12 @@ def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
         error('schedule_seasonal_maps', e)
 
 
-def schedule_seasonal_warriors(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_seasonal_warriors({tokens})')
+def schedule_seasonal_warriors() -> None:
+    log('called schedule_seasonal_warriors()')
 
 
-def schedule_totd_map(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_totd_map({tokens})')
+def schedule_totd_map() -> None:
+    log('called schedule_totd_map()')
 
     try:
         sleep(wait_time)
@@ -411,19 +436,19 @@ def schedule_totd_map(tokens: dict[auth.Token]) -> None:
             json.dump(maps_totd, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'] + 1)
+        write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
         write_db_key_val('warrior_totd', maps_totd['nextRequestTimestamp'] + 7200)  # +2 hours
 
     except Exception as e:
         error('schedule_totd_map', e)
 
 
-def schedule_totd_warrior(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_totd_warrior({tokens})')
+def schedule_totd_warrior() -> None:
+    log('called schedule_totd_warrior()')
 
 
-def schedule_weekly_maps(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_weekly_maps({tokens})')
+def schedule_weekly_maps() -> None:
+    log('called schedule_weekly_maps()')
 
     try:
         sleep(wait_time)
@@ -438,7 +463,7 @@ def schedule_weekly_maps(tokens: dict[auth.Token]) -> None:
             json.dump(maps_weekly, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'] + 1)
+        write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
 
         with sql.connect(file_db) as con:
             cur: sql.Cursor = con.cursor()
@@ -505,8 +530,8 @@ def schedule_weekly_maps(tokens: dict[auth.Token]) -> None:
         error('schedule_weekly_maps', e)
 
 
-def schedule_weekly_warriors(tokens: dict[auth.Token]) -> None:
-    log(f'called schedule_weekly_warriors({tokens})')
+def schedule_weekly_warriors() -> None:
+    log('called schedule_weekly_warriors()')
 
 
 def strip_format_codes(raw: str) -> str:
@@ -560,6 +585,52 @@ def webhook_seasonal_maps() -> None:
         error('webhook_seasonal_maps', e)
 
 
+def webhook_weekly_maps() -> None:
+    log(f'called webhook_weekly_maps()')
+
+    maps: list[dict] = []
+
+    try:
+        with sql.connect(file_db) as con:
+            con.row_factory = sql.Row
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for entry in cur.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(5):
+                maps.append(dict(entry))
+
+        for map in maps:
+            sleep(1)
+
+            webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-weekly-updates'])
+
+            embed: DiscordEmbed = DiscordEmbed(
+                strip_format_codes(map['name']),
+                f'by [{get_account_name(map['author'])}](https://trackmania.io/#/player/{map['author']})\nWeek {map['week']}',
+                color='FFDD00'
+            )
+
+            embed.add_embed_field(
+                'Medals',
+                f'''
+<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
+<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
+<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
+<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
+''',
+                False
+            )
+
+            embed.add_embed_field('Links', f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})')
+
+            embed.set_thumbnail(map['thumbnailUrl'])
+            webhook.add_embed(embed)
+            webhook.execute()
+
+    except Exception as e:
+        error('webhook_weekly_maps', e)
+
+
 def write_db_key_val(key: str, val) -> None:
     log(f"called write_db_key_val('{key}', '{val}')")
 
@@ -575,7 +646,8 @@ def write_db_key_val(key: str, val) -> None:
 
 
 def main() -> None:
-    tokens: dict[auth.Token] = get_tokens()
+    global tokens
+    tokens = get_tokens()
 
     while True:
         sleep(1)
@@ -583,27 +655,24 @@ def main() -> None:
         ts: int = int(time())
 
         val: str = read_db_key_val('next_weekly')
-        next_weekly: int = int(val) if len(val) > 0 else 0
-        if ts >= next_weekly:
-            schedule_weekly_maps(tokens)
-            map_info_weekly(tokens)
+        if ts > (int(val) if len(val) > 0 else 0):
+            schedule_weekly_maps()
+            map_info_weekly()
+            webhook_weekly_maps()
 
         val = read_db_key_val('next_seasonal')
-        next_seasonal: int = int(val) if len(val) > 0 else 0
-        if ts >= next_seasonal:
-            schedule_seasonal_maps(tokens)
-            map_info_seasonal(tokens)
+        if ts > (int(val) if len(val) > 0 else 0):
+            schedule_seasonal_maps()
+            map_info_seasonal()
             webhook_seasonal_maps()
 
         val = read_db_key_val('next_totd')
-        next_totd: int = int(val) if len(val) > 0 else 0
-        if ts >= next_totd:
-            schedule_totd_map(tokens)
+        if ts > (int(val) if len(val) > 0 else 0):
+            schedule_totd_map()
 
         val = read_db_key_val('next_royal')
-        next_royal: int = int(val) if len(val) > 0 else 0
-        if ts >= next_royal:
-            schedule_royal_maps(tokens)
+        if ts > (int(val) if len(val) > 0 else 0):
+            schedule_royal_maps()
 
         pass
 
