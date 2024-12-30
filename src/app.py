@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2024-12-29
+# m 2024-12-30
 
 from base64 import b64encode
 from datetime import datetime as dt
@@ -184,6 +184,80 @@ def map_info_seasonal(tokens: dict[auth.Token]) -> None:
         error('map_info_seasonal', e)
 
 
+def map_info_weekly(tokens: dict[auth.Token]) -> None:
+    log(f'called map_info_weekly()')
+
+    maps_by_uid: dict = {}
+    uid_groups:  list = []
+    uid_limit:   int  = 270
+    uids:        list = []
+
+    try:
+        with sql.connect(file_db) as con:
+            con.row_factory = sql.Row
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for entry in cur.execute('SELECT * FROM Weekly').fetchall():
+                map: dict = dict(entry)
+                maps_by_uid[map['mapUid']] = map
+
+        uids = list(maps_by_uid)
+        while True:
+            if len(uids) > uid_limit:
+                uid_groups.append(','.join(uids[:uid_limit]))
+                uids = uids[uid_limit:]
+            else:
+                uid_groups.append(','.join(uids))
+                break
+
+        for i, group in enumerate(uid_groups):
+            log(f'map_info_weekly {i + 1}/{len(uid_groups)} groups...')
+
+            sleep(wait_time)
+            info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
+
+            for entry in info:
+                map: dict = maps_by_uid[entry['mapUid']]
+
+                map['author']          = entry['author']
+                map['authorTime']      = entry['authorScore']
+                map['bronzeTime']      = entry['bronzeScore']
+                map['downloadUrl']     = entry['fileUrl']
+                map['goldTime']        = entry['goldScore']
+                map['mapId']           = entry['mapId']
+                map['name']            = entry['name']
+                map['silverTime']      = entry['silverScore']
+                map['submitter']       = entry['submitter']
+                map['thumbnailUrl']    = entry['thumbnailUrl']
+                map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
+
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for uid, map in maps_by_uid.items():
+                cur.execute(f'''
+                    UPDATE Weekly
+                    SET author          = "{map['author']}",
+                        authorTime      = "{map['authorTime']}",
+                        bronzeTime      = "{map['bronzeTime']}",
+                        downloadUrl     = "{map['downloadUrl']}",
+                        goldTime        = "{map['goldTime']}",
+                        mapId           = "{map['mapId']}",
+                        name            = "{map['name']}",
+                        silverTime      = "{map['silverTime']}",
+                        submitter       = "{map['submitter']}",
+                        thumbnailUrl    = "{map['thumbnailUrl']}",
+                        timestampUpload = "{map['timestampUpload']}"
+                    WHERE mapUid = "{uid}"
+                    ;
+                ''')
+
+    except Exception as e:
+        error('map_info_weekly', e)
+
+
 def now(brackets: bool = True) -> str:
     utc    = dt.now(tz('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     denver = f'Denver {dt.now(tz('America/Denver')).strftime('%H:%M')}'
@@ -224,7 +298,7 @@ def schedule_royal_maps(tokens: dict[auth.Token]) -> None:
             json.dump(maps_royal, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
+        write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'] + 1)
 
     except Exception as e:
         error('schedule_royal_maps', e)
@@ -246,7 +320,8 @@ def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
             json.dump(maps_seasonal, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+        write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'] + 1)
+        write_db_key_val('warrior_seasonal', maps_seasonal['nextRequestTimestamp'] + 1209600)  # +2 weeks
 
         with sql.connect(file_db) as con:
             cur: sql.Cursor = con.cursor()
@@ -281,20 +356,9 @@ def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
             ''')
 
             for i, campaign in enumerate(reversed(maps_seasonal['campaignList'])):
-                campaignId:           int        = campaign['id']
-                campaignIndex:        int        = i
-                leaderboardGroupUid:  str        = campaign['leaderboardGroupUid']
-                seasonUid:            str        = campaign['seasonUid']
-                timestampEdition:     int        = campaign['editionTimestamp']
-                timestampEnd:         int        = campaign['endTimestamp']
-                timestampPublished:   int        = campaign['publicationTimestamp']
                 timestampRankingSent: int | None = campaign['rankingSentTimestamp']
-                timestampStart:       int        = campaign['startTimestamp']
 
                 for map in campaign['playlist']:
-                    mapIndex: int = map['position']
-                    mapUid:   str = map['mapUid']
-
                     cur.execute(f'''
                         INSERT INTO Seasonal (
                             campaignId,
@@ -309,17 +373,17 @@ def schedule_seasonal_maps(tokens: dict[auth.Token]) -> None:
                             timestampRankingSent,
                             timestampStart
                         ) VALUES (
-                            "{campaignId}",
-                            "{campaignIndex}",
-                            "{leaderboardGroupUid}",
-                            "{mapIndex}",
-                            "{mapUid}",
-                            "{seasonUid}",
-                            "{timestampEdition}",
-                            "{timestampEnd}",
-                            "{timestampPublished}",
+                            "{campaign['id']}",
+                            "{i}",
+                            "{campaign['leaderboardGroupUid']}",
+                            "{map['position']}",
+                            "{map['mapUid']}",
+                            "{campaign['seasonUid']}",
+                            "{campaign['editionTimestamp']}",
+                            "{campaign['endTimestamp']}",
+                            "{campaign['publicationTimestamp']}",
                             {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
-                            "{timestampStart}"
+                            "{campaign['startTimestamp']}"
                         )
                     ''')
 
@@ -347,7 +411,8 @@ def schedule_totd_map(tokens: dict[auth.Token]) -> None:
             json.dump(maps_totd, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
+        write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'] + 1)
+        write_db_key_val('warrior_totd', maps_totd['nextRequestTimestamp'] + 7200)  # +2 hours
 
     except Exception as e:
         error('schedule_totd_map', e)
@@ -373,7 +438,68 @@ def schedule_weekly_maps(tokens: dict[auth.Token]) -> None:
             json.dump(maps_weekly, f, indent=4)
             f.write('\n')
 
-        write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
+        write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'] + 1)
+
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            cur.execute('DROP TABLE IF EXISTS Weekly')
+            cur.execute(f'''
+                CREATE TABLE IF NOT EXISTS Weekly (
+                    author               CHAR(36),
+                    authorTime           INT,
+                    bronzeTime           INT,
+                    campaignId           INT,
+                    downloadUrl          CHAR(86),
+                    goldTime             INT,
+                    mapId                CHAR(36),
+                    mapIndex             INT,
+                    mapUid               VARCHAR(27) PRIMARY KEY,
+                    name                 TEXT,
+                    seasonUid            CHAR(36),
+                    silverTime           INT,
+                    submitter            CHAR(36),
+                    thumbnailUrl         CHAR(90),
+                    timestampEdition     INT,
+                    timestampEnd         INT,
+                    timestampRankingSent INT,
+                    timestampStart       INT,
+                    timestampUpload      INT,
+                    week                 INT,
+                    year                 INT
+                );
+            ''')
+
+            for campaign in reversed(maps_weekly['campaignList']):
+                timestampRankingSent: int | None = campaign['rankingSentTimestamp']
+
+                for map in campaign['playlist']:
+                    cur.execute(f'''
+                        INSERT INTO Weekly (
+                            campaignId,
+                            mapIndex,
+                            mapUid,
+                            seasonUid,
+                            timestampEdition,
+                            timestampEnd,
+                            timestampRankingSent,
+                            timestampStart,
+                            week,
+                            year
+                        ) VALUES (
+                            "{campaign['id']}",
+                            "{map['position']}",
+                            "{map['mapUid']}",
+                            "{campaign['seasonUid']}",
+                            "{campaign['editionTimestamp']}",
+                            "{campaign['endTimestamp']}",
+                            {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
+                            "{campaign['startTimestamp']}",
+                            "{campaign['week']}",
+                            "{campaign['year']}"
+                        )
+                    ''')
 
     except Exception as e:
         error('schedule_weekly_maps', e)
@@ -460,6 +586,7 @@ def main() -> None:
         next_weekly: int = int(val) if len(val) > 0 else 0
         if ts >= next_weekly:
             schedule_weekly_maps(tokens)
+            map_info_weekly(tokens)
 
         val = read_db_key_val('next_seasonal')
         next_seasonal: int = int(val) if len(val) > 0 else 0
