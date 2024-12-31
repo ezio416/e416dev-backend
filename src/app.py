@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2024-12-30
+# m 2024-12-31
 
 from base64 import b64encode
 from datetime import datetime as dt
@@ -74,6 +74,80 @@ def get_account_name(account_id: str) -> str:
     return name
 
 
+def get_map_infos(table: str) -> None:
+    log(f"called get_map_info('{table}')")
+
+    maps_by_uid: dict = {}
+    uid_groups:  list = []
+    uid_limit:   int  = 270
+    uids:        list = []
+
+    try:
+        with sql.connect(file_db) as con:
+            con.row_factory = sql.Row
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for entry in cur.execute(f'SELECT * FROM {table}').fetchall():
+                map: dict = dict(entry)
+                maps_by_uid[map['mapUid']] = map
+
+        uids = list(maps_by_uid)
+        while True:
+            if len(uids) > uid_limit:
+                uid_groups.append(','.join(uids[:uid_limit]))
+                uids = uids[uid_limit:]
+            else:
+                uid_groups.append(','.join(uids))
+                break
+
+        for i, group in enumerate(uid_groups):
+            log(f'get_map_info {i + 1}/{len(uid_groups)} groups...')
+
+            sleep(wait_time)
+            info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
+
+            for entry in info:
+                map: dict = maps_by_uid[entry['mapUid']]
+
+                map['author']          = entry['author']
+                map['authorTime']      = entry['authorScore']
+                map['bronzeTime']      = entry['bronzeScore']
+                map['downloadUrl']     = entry['fileUrl']
+                map['goldTime']        = entry['goldScore']
+                map['mapId']           = entry['mapId']
+                map['name']            = entry['name']
+                map['silverTime']      = entry['silverScore']
+                map['submitter']       = entry['submitter']
+                map['thumbnailUrl']    = entry['thumbnailUrl']
+                map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
+
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            for uid, map in maps_by_uid.items():
+                cur.execute(f'''
+                    UPDATE {table}
+                    SET author          = "{map['author']}",
+                        authorTime      = "{map['authorTime']}",
+                        bronzeTime      = "{map['bronzeTime']}",
+                        downloadUrl     = "{map['downloadUrl']}",
+                        goldTime        = "{map['goldTime']}",
+                        mapId           = "{map['mapId']}",
+                        name            = "{map['name']}",
+                        silverTime      = "{map['silverTime']}",
+                        submitter       = "{map['submitter']}",
+                        thumbnailUrl    = "{map['thumbnailUrl']}",
+                        timestampUpload = "{map['timestampUpload']}"
+                    WHERE mapUid = "{uid}"
+                    ;
+                ''')
+
+    except Exception as e:
+        error('get_map_info', e)
+
+
 def get_tokens() -> dict:
     log('getting core token')
     token_core: auth.Token = auth.get_token(
@@ -135,154 +209,6 @@ def log(msg: str, print_term: bool = True) -> None:
         f.write(f'{text}\n')
 
 
-def map_info_seasonal() -> None:
-    log(f'called map_info_seasonal()')
-
-    maps_by_uid: dict = {}
-    uid_groups:  list = []
-    uid_limit:   int  = 270
-    uids:        list = []
-
-    try:
-        with sql.connect(file_db) as con:
-            con.row_factory = sql.Row
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-            for entry in cur.execute('SELECT * FROM Seasonal').fetchall():
-                map: dict = dict(entry)
-                maps_by_uid[map['mapUid']] = map
-
-        uids = list(maps_by_uid)
-        while True:
-            if len(uids) > uid_limit:
-                uid_groups.append(','.join(uids[:uid_limit]))
-                uids = uids[uid_limit:]
-            else:
-                uid_groups.append(','.join(uids))
-                break
-
-        for i, group in enumerate(uid_groups):
-            log(f'map_info_seasonal {i + 1}/{len(uid_groups)} groups...')
-
-            sleep(wait_time)
-            info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
-
-            for entry in info:
-                map: dict = maps_by_uid[entry['mapUid']]
-
-                map['author']          = entry['author']
-                map['authorTime']      = entry['authorScore']
-                map['bronzeTime']      = entry['bronzeScore']
-                map['downloadUrl']     = entry['fileUrl']
-                map['goldTime']        = entry['goldScore']
-                map['mapId']           = entry['mapId']
-                map['name']            = entry['name']
-                map['silverTime']      = entry['silverScore']
-                map['submitter']       = entry['submitter']
-                map['thumbnailUrl']    = entry['thumbnailUrl']
-                map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
-
-        with sql.connect(file_db) as con:
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-            for uid, map in maps_by_uid.items():
-                cur.execute(f'''
-                    UPDATE Seasonal
-                    SET author          = "{map['author']}",
-                        authorTime      = "{map['authorTime']}",
-                        bronzeTime      = "{map['bronzeTime']}",
-                        downloadUrl     = "{map['downloadUrl']}",
-                        goldTime        = "{map['goldTime']}",
-                        mapId           = "{map['mapId']}",
-                        name            = "{map['name']}",
-                        silverTime      = "{map['silverTime']}",
-                        submitter       = "{map['submitter']}",
-                        thumbnailUrl    = "{map['thumbnailUrl']}",
-                        timestampUpload = "{map['timestampUpload']}"
-                    WHERE mapUid = "{uid}"
-                    ;
-                ''')
-
-    except Exception as e:
-        error('map_info_seasonal', e)
-
-
-def map_info_weekly() -> None:
-    log(f'called map_info_weekly()')
-
-    maps_by_uid: dict = {}
-    uid_groups:  list = []
-    uid_limit:   int  = 270
-    uids:        list = []
-
-    try:
-        with sql.connect(file_db) as con:
-            con.row_factory = sql.Row
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-            for entry in cur.execute('SELECT * FROM Weekly').fetchall():
-                map: dict = dict(entry)
-                maps_by_uid[map['mapUid']] = map
-
-        uids = list(maps_by_uid)
-        while True:
-            if len(uids) > uid_limit:
-                uid_groups.append(','.join(uids[:uid_limit]))
-                uids = uids[uid_limit:]
-            else:
-                uid_groups.append(','.join(uids))
-                break
-
-        for i, group in enumerate(uid_groups):
-            log(f'map_info_weekly {i + 1}/{len(uid_groups)} groups...')
-
-            sleep(wait_time)
-            info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
-
-            for entry in info:
-                map: dict = maps_by_uid[entry['mapUid']]
-
-                map['author']          = entry['author']
-                map['authorTime']      = entry['authorScore']
-                map['bronzeTime']      = entry['bronzeScore']
-                map['downloadUrl']     = entry['fileUrl']
-                map['goldTime']        = entry['goldScore']
-                map['mapId']           = entry['mapId']
-                map['name']            = entry['name']
-                map['silverTime']      = entry['silverScore']
-                map['submitter']       = entry['submitter']
-                map['thumbnailUrl']    = entry['thumbnailUrl']
-                map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
-
-        with sql.connect(file_db) as con:
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-            for uid, map in maps_by_uid.items():
-                cur.execute(f'''
-                    UPDATE Weekly
-                    SET author          = "{map['author']}",
-                        authorTime      = "{map['authorTime']}",
-                        bronzeTime      = "{map['bronzeTime']}",
-                        downloadUrl     = "{map['downloadUrl']}",
-                        goldTime        = "{map['goldTime']}",
-                        mapId           = "{map['mapId']}",
-                        name            = "{map['name']}",
-                        silverTime      = "{map['silverTime']}",
-                        submitter       = "{map['submitter']}",
-                        thumbnailUrl    = "{map['thumbnailUrl']}",
-                        timestampUpload = "{map['timestampUpload']}"
-                    WHERE mapUid = "{uid}"
-                    ;
-                ''')
-
-    except Exception as e:
-        error('map_info_weekly', e)
-
-
 def now(brackets: bool = True) -> str:
     utc    = dt.now(tz('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     denver = f'Denver {dt.now(tz('America/Denver')).strftime('%H:%M')}'
@@ -324,6 +250,71 @@ def schedule_royal_maps() -> None:
             f.write('\n')
 
         write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
+
+        with sql.connect(file_db) as con:
+            cur: sql.Cursor = con.cursor()
+
+            cur.execute('BEGIN')
+            cur.execute('DROP TABLE IF EXISTS Royal')
+            cur.execute(f'''
+                CREATE TABLE IF NOT EXISTS Royal (
+                    author          CHAR(36),
+                    authorTime      INT,
+                    bronzeTime      INT,
+                    campaignId      INT,
+                    downloadUrl     CHAR(86),
+                    goldTime        INT,
+                    mapId           CHAR(36),
+                    mapUid          VARCHAR(27) PRIMARY KEY,
+                    month           INT,
+                    monthDay        INT,
+                    name            TEXT,
+                    silverTime      INT,
+                    submitter       CHAR(36),
+                    thumbnailUrl    CHAR(90),
+                    timestampEnd    INT,
+                    timestampStart  INT,
+                    timestampUpload INT,
+                    weekDay         INT,
+                    year            INT
+                );
+            ''')
+
+            mapUids: set = set()
+
+            for month in reversed(maps_royal['monthList']):
+                for map in month['days']:
+                    mapUid: str = map['mapUid']
+                    if len(mapUid) == 0:
+                        break
+
+                    if mapUid in mapUids:
+                        # log(f'schedule_royal_maps duplicate: {mapUid}')
+                        continue
+                    else:
+                        mapUids.add(mapUid)
+
+                    cur.execute(f'''
+                        INSERT INTO Royal (
+                            campaignId,
+                            mapUid,
+                            month,
+                            monthDay,
+                            timestampEnd,
+                            timestampStart,
+                            weekDay,
+                            year
+                        ) VALUES (
+                            "{map['campaignId']}",
+                            "{mapUid}",
+                            "{month['month']}",
+                            "{map['monthDay']}",
+                            "{map['endTimestamp']}",
+                            "{map['startTimestamp']}",
+                            "{map['day']}",
+                            "{month['year']}"
+                        )
+                    ''')
 
     except Exception as e:
         error('schedule_royal_maps', e)
@@ -446,26 +437,26 @@ def schedule_totd_maps() -> None:
             cur.execute('DROP TABLE IF EXISTS Totd')
             cur.execute(f'''
                 CREATE TABLE IF NOT EXISTS Totd (
-                    author               CHAR(36),
-                    authorTime           INT,
-                    bronzeTime           INT,
-                    campaignId           INT,
-                    downloadUrl          CHAR(86),
-                    goldTime             INT,
-                    mapId                CHAR(36),
-                    mapUid               VARCHAR(27) PRIMARY KEY,
-                    month                INT,
-                    monthDay             INT,
-                    name                 TEXT,
-                    seasonUid            CHAR(36),
-                    silverTime           INT,
-                    submitter            CHAR(36),
-                    thumbnailUrl         CHAR(90),
-                    timestampEnd         INT,
-                    timestampStart       INT,
-                    timestampUpload      INT,
-                    weekDay              INT,
-                    year                 INT
+                    author          CHAR(36),
+                    authorTime      INT,
+                    bronzeTime      INT,
+                    campaignId      INT,
+                    downloadUrl     CHAR(86),
+                    goldTime        INT,
+                    mapId           CHAR(36),
+                    mapUid          VARCHAR(27) PRIMARY KEY,
+                    month           INT,
+                    monthDay        INT,
+                    name            TEXT,
+                    seasonUid       CHAR(36),
+                    silverTime      INT,
+                    submitter       CHAR(36),
+                    thumbnailUrl    CHAR(90),
+                    timestampEnd    INT,
+                    timestampStart  INT,
+                    timestampUpload INT,
+                    weekDay         INT,
+                    year            INT
                 );
             ''')
 
@@ -477,6 +468,7 @@ def schedule_totd_maps() -> None:
 
                     cur.execute(f'''
                         INSERT INTO Totd (
+                            campaignId,
                             mapUid,
                             month,
                             monthDay,
@@ -486,6 +478,7 @@ def schedule_totd_maps() -> None:
                             weekDay,
                             year
                         ) VALUES (
+                            "{map['campaignId']}",
                             "{mapUid}",
                             "{month['month']}",
                             "{map['monthDay']}",
@@ -597,6 +590,10 @@ def strip_format_codes(raw: str) -> str:
     return re.sub(r'\$([0-9a-fA-F]{1,3}|[iIoOnNmMwWsSzZtTgG<>]|[lLhHpP](\[[^\]]+\])?)', '', raw).strip()
 
 
+def webhook_royal_map() -> None:
+    pass
+
+
 def webhook_seasonal_maps() -> None:
     log(f'called webhook_seasonal_maps()')
 
@@ -641,6 +638,10 @@ def webhook_seasonal_maps() -> None:
 
     except Exception as e:
         error('webhook_seasonal_maps', e)
+
+
+def webhook_totd_map() -> None:
+    pass
 
 
 def webhook_weekly_maps() -> None:
@@ -715,22 +716,26 @@ def main() -> None:
         val: str = read_db_key_val('next_weekly')
         if ts > (int(val) if len(val) > 0 else 0):
             schedule_weekly_maps()
-            map_info_weekly()
+            get_map_infos('Weekly')
             webhook_weekly_maps()
 
         val = read_db_key_val('next_seasonal')
         if ts > (int(val) if len(val) > 0 else 0):
             schedule_seasonal_maps()
-            map_info_seasonal()
+            get_map_infos('Seasonal')
             webhook_seasonal_maps()
 
         val = read_db_key_val('next_totd')
         if ts > (int(val) if len(val) > 0 else 0):
             schedule_totd_maps()
+            get_map_infos('Totd')
+            webhook_totd_map()
 
         val = read_db_key_val('next_royal')
         if ts > (int(val) if len(val) > 0 else 0):
             schedule_royal_maps()
+            get_map_infos('Royal')
+            webhook_royal_map()
 
         pass
 
