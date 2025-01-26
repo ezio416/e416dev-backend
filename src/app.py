@@ -1,69 +1,82 @@
 # c 2024-12-26
-# m 2024-01-14
+# m 2024-01-26
 
+from base64 import b64encode
 from datetime import datetime as dt
-import inspect
+import hashlib
 import json
 import os
 import re
 import sqlite3 as sql
-import sys
-from time import sleep, time
+import time
 import traceback
 import zipfile
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from nadeo_api import auth, core, live, oauth
 from pytz import timezone as tz
+from requests import ConnectionError, get, put, Response
 
 
-accounts:          dict  = {}
-tokens:            dict  = {}
-par_dir:           str   = f'{os.path.dirname(__file__)}/..'
-file_db:           str   = f'{par_dir}/data/tm.db'
-file_log:          str   = f'{par_dir}/data/tm.log'
-file_royal:        str   = f'{par_dir}/data/royal.json'
-file_royal_raw:    str   = f'{par_dir}/data/royal_raw.json'
-file_seasonal:     str   = f'{par_dir}/data/seasonal.json'
-file_seasonal_raw: str   = f'{par_dir}/data/seasonal_raw.json'
-file_totd:         str   = f'{par_dir}/data/totd.json'
-file_totd_raw:     str   = f'{par_dir}/data/totd_raw.json'
-file_warrior:      str   = f'{par_dir}/data/warrior.json'
-file_weekly:       str   = f'{par_dir}/data/weekly.json'
-file_weekly_raw:   str   = f'{par_dir}/data/weekly_raw.json'
-file_zone:         str   = f'{par_dir}/data/zone.json'
-wait_time:         float = 0.5
+CAMPAIGN_SERIES: tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
+PAR_DIR:         str        = f'{os.path.dirname(__file__).replace('\\', '/')}/..'
+DATA_DIR:        str        = f'{PAR_DIR}/data'
+WAIT_TIME:       float      = 0.5
+
+accounts:          dict = {}
+tokens:            dict = {}
+file_db:           str  = f'{DATA_DIR}/tm.db'
+file_log:          str  = f'{DATA_DIR}/tm.log'
+file_royal:        str  = f'{DATA_DIR}/royal.json'
+file_royal_raw:    str  = f'{DATA_DIR}/royal_raw.json'
+file_seasonal:     str  = f'{DATA_DIR}/seasonal.json'
+file_seasonal_raw: str  = f'{DATA_DIR}/seasonal_raw.json'
+file_totd:         str  = f'{DATA_DIR}/totd.json'
+file_totd_raw:     str  = f'{DATA_DIR}/totd_raw.json'
+file_warrior:      str  = f'{DATA_DIR}/warrior.json'
+file_weekly:       str  = f'{DATA_DIR}/weekly.json'
+file_weekly_raw:   str  = f'{DATA_DIR}/weekly_raw.json'
+file_zone:         str  = f'{DATA_DIR}/zone.json'
+file_zone_raw:     str  = f'{DATA_DIR}/zone_raw.json'
 
 
 def exception_causing_code(e: BaseException) -> traceback.FrameSummary:
-    return traceback.TracebackException(type(e), e, e.__traceback__).stack[-1]
+    return traceback.TracebackException.from_exception(e).stack[-1]
 
 
-def error(func, e: Exception) -> None:
-    code = exception_causing_code(e)
+def error(e: Exception, silent: bool = False) -> None:
+    code: traceback.FrameSummary = exception_causing_code(e)
 
-    # loc: str = f'line {e.__traceback__.tb_next.tb_lineno} in {func.__name__}()'
-    loc: str = f'line {code.lineno} in {code.name}()'
+    loc: str = f'line {code.lineno}, column {code.colno} in {code.name}()'
 
-    log(f'error: {loc}: {type(e).__name__}: {e}')
+    log(f'error: {loc}: {type(e).__name__}: {e} id<{id(e)}>')
 
-    DiscordWebhook(
-        os.environ['dcwh-site-backend-errors'],
-        # content=f'<@&1205257336252534814>\n`{now(False)}`\n`{loc}`\n`{type(e).__name__}: {e}`'
-        content=f'<@&1205257336252534814>\n`{now(False)}`\n`{type(e).__name__}: {e}`\n`{loc}`\n`{code.line}`'
-    ).execute()
+    if not silent:
+        DiscordWebhook(
+            os.environ['dcwh-site-backend-errors'],
+            content=f'<@&1205257336252534814> id<`{id(e)}`>\n`{now(False)}`\n`{type(e).__name__}: {e}`\n`{loc}`\n\n`{code.line}`'
+        ).execute()
 
 
-def logged_and_tried(func):
-    def wrapper(*args, **kwargs):
-        print(f'called {func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
+def safelogged(return_type: type = None, silent: bool = False, do_log: bool = True):
+    def inner(func):
+        def wrapper(*args, **kwargs):
+            if return_type is not None and return_type.__class__ is not type:
+                print(f'{return_type.__name__} is not a type')
+                return None
 
-        try:
-            func(*args, **kwargs)
-        except Exception as e:
-            error(func, e)
+            if do_log and not silent:
+                log(f'info: called {func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
 
-    return wrapper
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                error(e, silent)
+                return return_type() if return_type is not None else None
+
+        wrapper.__name__ = func.__name__  # feels like a bad idea but it works
+        return wrapper
+    return inner
 
 
 def format_race_time(input_ms: int) -> str:
@@ -74,31 +87,28 @@ def format_race_time(input_ms: int) -> str:
     return f'{min}:{str(sec).zfill(2)}.{str(ms).zfill(3)}'
 
 
+@safelogged(str)
 def get_account_name(account_id: str) -> str:
-    log(f"called get_account_name('{account_id}')")
-
     global accounts
 
-    ts: int = int(time())
+    ts: int = stamp()
 
     if account_id in accounts and ts < accounts[account_id]['ts']:
         return accounts[account_id]['name']
 
-    sleep(wait_time)
+    time.sleep(WAIT_TIME)
     req = oauth.account_names_from_ids(tokens['oauth'], account_id)
 
     name: str = req[account_id]
     accounts[account_id] = {}
     accounts[account_id]['name'] = name
-    accounts[account_id]['ts'] = ts + 3600  # keep valid for 1 hour
-
-    log(f"get_account_name('{account_id}'): {name}")
+    accounts[account_id]['ts'] = ts + 60*60  # keep valid for 1 hour
 
     return name
 
 
-@logged_and_tried
-def get_map_infos(table: str) -> None:
+@safelogged(bool)
+def get_map_infos(table: str) -> bool:
     maps_by_uid: dict = {}
     uid_groups:  list = []
     uid_limit:   int  = 270
@@ -123,9 +133,9 @@ def get_map_infos(table: str) -> None:
             break
 
     for i, group in enumerate(uid_groups):
-        log(f'get_map_info {i + 1}/{len(uid_groups)} groups...')
+        log(f'info: get_map_info {i + 1}/{len(uid_groups)} groups...')
 
-        sleep(wait_time)
+        time.sleep(WAIT_TIME)
         info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
 
         for entry in info:
@@ -134,13 +144,12 @@ def get_map_infos(table: str) -> None:
             map['author']          = entry['author']
             map['authorTime']      = entry['authorScore']
             map['bronzeTime']      = entry['bronzeScore']
-            map['downloadUrl']     = entry['fileUrl']
+            map['fileUid']         = re.search(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}', entry['fileUrl'])[0]
             map['goldTime']        = entry['goldScore']
             map['mapId']           = entry['mapId']
             map['name']            = entry['name']
             map['silverTime']      = entry['silverScore']
             map['submitter']       = entry['submitter']
-            map['thumbnailUrl']    = entry['thumbnailUrl']
             map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
 
     with sql.connect(file_db) as con:
@@ -153,21 +162,22 @@ def get_map_infos(table: str) -> None:
                 SET author          = "{map['author']}",
                     authorTime      = "{map['authorTime']}",
                     bronzeTime      = "{map['bronzeTime']}",
-                    downloadUrl     = "{map['downloadUrl']}",
+                    fileUid         = "{map['fileUid']}",
                     goldTime        = "{map['goldTime']}",
                     mapId           = "{map['mapId']}",
                     name            = "{map['name']}",
                     silverTime      = "{map['silverTime']}",
                     submitter       = "{map['submitter']}",
-                    thumbnailUrl    = "{map['thumbnailUrl']}",
                     timestampUpload = "{map['timestampUpload']}"
                 WHERE mapUid = "{uid}"
                 ;
             ''')
 
+    return True
+
 
 def get_tokens() -> dict:
-    log('getting core token')
+    log('info: getting core token')
     token_core: auth.Token = auth.get_token(
         auth.audience_core,
         os.environ['TM_E416DEV_SERVER_USERNAME'],
@@ -176,7 +186,7 @@ def get_tokens() -> dict:
         True
     )
 
-    log('getting live token')
+    log('info: getting live token')
     token_live: auth.Token = auth.get_token(
         auth.audience_live,
         os.environ['TM_E416DEV_SERVER_USERNAME'],
@@ -185,7 +195,7 @@ def get_tokens() -> dict:
         True
     )
 
-    log('getting oauth token')
+    log('info: getting oauth token')
     token_oauth: auth.Token = auth.get_token(
         auth.audience_oauth,
         os.environ['TM_OAUTH_IDENTIFIER'],
@@ -235,53 +245,35 @@ def now(brackets: bool = True) -> str:
     return f'{'[' if brackets else ''}{utc} ({denver}, {paris}){']' if brackets else ''}'
 
 
-def errorOld(e: Exception) -> None:
-    loc: str = ''
-    try:
-        loc = f'line {sys.exc_info()[2].tb_lineno} in {traceback.extract_stack()[-2].name}()'
-    except Exception as e2:
-        loc = f'error() failure: {type(e2).__name__}: {e2}'
-
-    log(f'error: {loc}: {type(e).__name__}: {e}')
-
-    DiscordWebhook(
-        os.environ['dcwh-site-backend-errors'],
-        content=f'<@&1205257336252534814>\n`{now(False)}`\n`{loc}`\n`{type(e).__name__}: {e}`'
-    ).execute()
-
-
+@safelogged(str, True)
 def read_db_key_val(key: str) -> str:
-    # log(f'called read_db_key_val({key})')
-
-    try:
-        with sql.connect(file_db) as con:
-            cur: sql.Cursor = con.cursor()
-            return cur.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
-
-    except TypeError as e:
-        log(f"(silent) read_db_key_val('{key}') TypeError {e}")
-        return ''
-
-    except Exception as e:
-        errorOld(e)
-        return ''
+    with sql.connect(file_db) as con:
+        cur: sql.Cursor = con.cursor()
+        return cur.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
 
 
-@logged_and_tried
-def schedule_royal_maps() -> None:
-    sleep(wait_time)
+@safelogged(list)
+def read_table(table: str) -> list[dict]:
+    with sql.connect(file_db) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        return [dict(item) for item in cur.execute(f'SELECT * FROM {table}').fetchall()]
+
+
+@safelogged(bool)
+def schedule_royal_maps() -> bool:
+    time.sleep(WAIT_TIME)
     maps_royal: dict = live.maps_royal(tokens['live'], 99)
 
     if os.path.isfile(file_royal_raw):
-        ts: int = int(time())
-        with zipfile.ZipFile(f'{par_dir}/data/history/royal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        ts: int = stamp()
+        with zipfile.ZipFile(f'{PAR_DIR}/data/history/royal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
             zip.write(file_royal_raw, 'royal_raw.json')
 
     with open(file_royal_raw, 'w', newline='\n') as f:
         json.dump(maps_royal, f, indent=4)
         f.write('\n')
-
-    write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
 
     with sql.connect(file_db) as con:
         cur: sql.Cursor = con.cursor()
@@ -348,23 +340,23 @@ def schedule_royal_maps() -> None:
                     )
                 ''')
 
+    write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
+    return True
 
-@logged_and_tried
-def schedule_seasonal_maps() -> None:
-    sleep(wait_time)
+
+@safelogged(bool)
+def schedule_seasonal_maps() -> bool:
+    time.sleep(WAIT_TIME)
     maps_seasonal: dict = live.maps_campaign(tokens['live'], 99)
 
     if os.path.isfile(file_seasonal_raw):
-        ts: int = int(time())
-        with zipfile.ZipFile(f'{par_dir}/data/history/seasonal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        ts: int = stamp()
+        with zipfile.ZipFile(f'{PAR_DIR}/data/history/seasonal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
             zip.write(file_seasonal_raw, 'seasonal_raw.json')
 
     with open(file_seasonal_raw, 'w', newline='\n') as f:
         json.dump(maps_seasonal, f, indent=4)
         f.write('\n')
-
-    write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
-    write_db_key_val('warrior_seasonal', maps_seasonal['nextRequestTimestamp'] + 1209600)  # +2 weeks
 
     with sql.connect(file_db) as con:
         cur: sql.Cursor = con.cursor()
@@ -378,17 +370,17 @@ def schedule_seasonal_maps() -> None:
                 bronzeTime           INT,
                 campaignId           INT,
                 campaignIndex        INT,
-                downloadUrl          CHAR(86),
+                fileUid              CHAR(36),
                 goldTime             INT,
                 leaderboardGroupUid  CHAR(36),
                 mapId                CHAR(36),
                 mapIndex             INT,
                 mapUid               VARCHAR(27) PRIMARY KEY,
                 name                 VARCHAR(16),
+                number               INT,
                 seasonUid            CHAR(36),
                 silverTime           INT,
                 submitter            CHAR(36),
-                thumbnailUrl         CHAR(90),
                 timestampEdition     INT,
                 timestampEnd         INT,
                 timestampPublished   INT,
@@ -409,6 +401,7 @@ def schedule_seasonal_maps() -> None:
                         leaderboardGroupUid,
                         mapIndex,
                         mapUid,
+                        number,
                         seasonUid,
                         timestampEdition,
                         timestampEnd,
@@ -421,6 +414,7 @@ def schedule_seasonal_maps() -> None:
                         "{campaign['leaderboardGroupUid']}",
                         "{map['position']}",
                         "{map['mapUid']}",
+                        "{i * 25 + map['position'] + 1}",
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
@@ -430,28 +424,92 @@ def schedule_seasonal_maps() -> None:
                     )
                 ''')
 
+    write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+    write_db_key_val('warrior_seasonal', maps_seasonal['nextRequestTimestamp'] + 60*60*24*14)
+    return True
 
-@logged_and_tried
-def schedule_seasonal_warriors() -> None:  # PRIORITY #################################################################
-    pass
+
+@safelogged(bool)
+def schedule_seasonal_warriors() -> bool:
+    maps: dict = {}
+
+    with sql.connect(file_db) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        for entry in cur.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
+            map = dict(entry)
+            maps[map['mapUid']] = map
+
+    for uid, map in maps.items():
+        print(f'getting records for {map['name']}')
+
+        time.sleep(WAIT_TIME)
+        req: dict = live.get(
+            tokens['live'],
+            f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
+        )
+
+        maps[uid]['worldRecord'] = req['tops'][0]['top'][0]['score']
+        maps[uid]['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'])
+
+    with sql.connect(file_db) as con:
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        cur.execute(f'''
+            CREATE TABLE IF NOT EXISTS WarriorSeasonal (
+                authorTime  INT,
+                campaignId  INT,
+                custom      INT,
+                mapUid      VARCHAR(27) PRIMARY KEY,
+                name        TEXT,
+                reason      TEXT,
+                warriorTime INT,
+                worldRecord INT
+            );
+        ''')
+
+        for uid, map in maps.items():
+            cur.execute(f'''
+                INSERT INTO WarriorSeasonal (
+                    authorTime,
+                    campaignId,
+                    custom,
+                    mapUid,
+                    name,
+                    reason,
+                    warriorTime,
+                    worldRecord
+                ) VALUES (
+                    "{map['authorTime']}",
+                    "{map['campaignId']}",
+                    {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
+                    "{map['mapUid']}",
+                    "{map['name']}",
+                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                    "{map['warriorTime']}",
+                    "{map['worldRecord']}"
+                )
+            ''')
+
+    return True
 
 
-@logged_and_tried
-def schedule_totd_maps() -> None:
-    sleep(wait_time)
+@safelogged(bool)
+def schedule_totd_maps() -> bool:
+    time.sleep(WAIT_TIME)
     maps_totd: dict = live.maps_totd(tokens['live'], 99)
 
     if os.path.isfile(file_totd_raw):
-        ts: int = int(time())
-        with zipfile.ZipFile(f'{par_dir}/data/history/totd_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        ts: int = stamp()
+        with zipfile.ZipFile(f'{PAR_DIR}/data/history/totd_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
             zip.write(file_totd_raw, 'totd_raw.json')
 
     with open(file_totd_raw, 'w', newline='\n') as f:
         json.dump(maps_totd, f, indent=4)
         f.write('\n')
-
-    write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
-    write_db_key_val('warrior_totd', maps_totd['nextRequestTimestamp'] + 7200)  # +2 hours
 
     with sql.connect(file_db) as con:
         cur: sql.Cursor = con.cursor()
@@ -513,27 +571,29 @@ def schedule_totd_maps() -> None:
                     )
                 ''')
 
+    write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
+    write_db_key_val('warrior_totd', maps_totd['nextRequestTimestamp'] + 60*60*2)
+    return True
 
-@logged_and_tried
-def schedule_totd_warrior() -> None:
-    pass
+
+@safelogged(bool)
+def schedule_totd_warrior() -> bool:
+    return True
 
 
-@logged_and_tried
-def schedule_weekly_maps() -> None:
-    sleep(wait_time)
+@safelogged(bool)
+def schedule_weekly_maps() -> bool:
+    time.sleep(WAIT_TIME)
     maps_weekly: dict = live.get(tokens['live'], 'api/campaign/weekly-shorts?length=99')
 
     if os.path.isfile(file_weekly_raw):
-        ts: int = int(time())
-        with zipfile.ZipFile(f'{par_dir}/data/history/weekly_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        ts: int = stamp()
+        with zipfile.ZipFile(f'{PAR_DIR}/data/history/weekly_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
             zip.write(file_weekly_raw, 'weekly_raw.json')
 
     with open(file_weekly_raw, 'w', newline='\n') as f:
         json.dump(maps_weekly, f, indent=4)
         f.write('\n')
-
-    write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
 
     with sql.connect(file_db) as con:
         cur: sql.Cursor = con.cursor()
@@ -546,16 +606,16 @@ def schedule_weekly_maps() -> None:
                 authorTime           INT,
                 bronzeTime           INT,
                 campaignId           INT,
-                downloadUrl          CHAR(86),
+                fileUid              CHAR(36),
                 goldTime             INT,
                 mapId                CHAR(36),
                 mapIndex             INT,
                 mapUid               VARCHAR(27) PRIMARY KEY,
                 name                 TEXT,
+                number               INT,
                 seasonUid            CHAR(36),
                 silverTime           INT,
                 submitter            CHAR(36),
-                thumbnailUrl         CHAR(90),
                 timestampEdition     INT,
                 timestampEnd         INT,
                 timestampRankingSent INT,
@@ -575,6 +635,7 @@ def schedule_weekly_maps() -> None:
                         campaignId,
                         mapIndex,
                         mapUid,
+                        number,
                         seasonUid,
                         timestampEdition,
                         timestampEnd,
@@ -586,6 +647,7 @@ def schedule_weekly_maps() -> None:
                         "{campaign['id']}",
                         "{map['position']}",
                         "{map['mapUid']}",
+                        "{(campaign['week'] - 1) * 5 + map['position'] + 1}",
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
@@ -596,9 +658,12 @@ def schedule_weekly_maps() -> None:
                     )
                 ''')
 
+    write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
+    return True
 
-@logged_and_tried
-def schedule_weekly_warriors() -> None:
+
+@safelogged(bool)
+def schedule_weekly_warriors() -> bool:
     maps: dict = {}
 
     with sql.connect(file_db) as con:
@@ -606,14 +671,15 @@ def schedule_weekly_warriors() -> None:
         cur: sql.Cursor = con.cursor()
 
         cur.execute('BEGIN')
-        for entry in cur.execute('SELECT * FROM Weekly ORDER BY week DESC').fetchmany(10)[5:]:
+        for entry in cur.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(10)[5:]:
+        # for entry in cur.execute('SELECT * FROM Weekly ORDER BY number ASC').fetchall():
             map = dict(entry)
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
         print(f'getting records for week {map['week']} map {map['name']}')
 
-        sleep(wait_time)
+        time.sleep(WAIT_TIME)
         req: dict = live.get(
             tokens['live'],
             f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
@@ -633,6 +699,7 @@ def schedule_weekly_warriors() -> None:
                 custom      INT,
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
+                number      INT,
                 reason      TEXT,
                 warriorTime INT,
                 worldRecord INT
@@ -647,6 +714,7 @@ def schedule_weekly_warriors() -> None:
                     custom,
                     mapUid,
                     name,
+                    number,
                     reason,
                     warriorTime,
                     worldRecord
@@ -656,27 +724,126 @@ def schedule_weekly_warriors() -> None:
                     {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                     "{map['mapUid']}",
                     "{map['name']}",
+                    "{map['number']}",
                     {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}"
                 )
             ''')
 
+    return True
+
+
+def stamp() -> int:
+    return int(time.time())
+
 
 def strip_format_codes(raw: str) -> str:
-    # return re.sub(r'\$(?:(\$)|[0-9a-fA-F]{2,3}|[lh]\[.*?\]|[lh]\[|.)', '', raw).strip()
     return re.sub(r'\$([0-9a-fA-F]{1,3}|[iIoOnNmMwWsSzZtTgG<>]|[lLhHpP](\[[^\]]+\])?)', '', raw).strip()
 
 
-@logged_and_tried
-def webhook_royal_map() -> None:
-    pass
+@safelogged()
+def tables_to_json() -> None:
+    for table_name, output_file in (
+        # ('Royal',    file_royal),
+        ('Seasonal', file_seasonal),
+        # ('Totd',     file_totd),
+        # ('Warrior',  file_warrior),
+        ('Weekly',   file_weekly),
+    ):
+        with open(output_file, 'w', newline='\n') as f:
+            json.dump({item['mapUid']: item for item in read_table(table_name)}, f, indent=4)
+            f.write('\n')
 
 
-@logged_and_tried
-def webhook_seasonal_maps() -> None:
-    maps:   list[dict] = []
-    series: tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
+@safelogged()
+def to_github() -> None:
+    base_url: str = 'https://api.github.com/repos/ezio416/tm-json/contents'
+    headers: dict = {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': f'Bearer {os.environ['GITHUB_TM_JSON_TOKEN']}',
+        'X_GitHub-Api-Version': '2022-11-28'
+    }
+
+    time.sleep(WAIT_TIME)
+    log('info: getting info from Github')
+    req:      Response   = get(base_url, headers=headers)
+    contents: list[dict] = req.json()
+
+    for file in (
+        file_royal,
+        file_seasonal,
+        file_totd,
+        file_warrior,
+        file_weekly
+    ):
+        if not os.path.isfile(file):
+            print(f'to_github(): not found: {file}')
+            continue
+
+        with open(file) as f:
+            file_data: str = f.read()
+
+        basename: str = os.path.basename(file)
+        sha:      str = hashlib.sha1(f'blob {len(file_data)}\x00{file_data}'.encode()).hexdigest()
+
+        for item in contents:
+            if basename != item['name'] or sha == item['sha']:
+                continue
+
+            time.sleep(WAIT_TIME)
+            log(f'info: sending to Github: {basename}')
+            sent: Response = put(
+                f'{base_url}/{basename}',
+                headers=headers,
+                json={
+                    'content': b64encode(file_data.encode()).decode(),
+                    'message': now(False),
+                    'sha': item['sha']
+                }
+            )
+
+            if sent.status_code == 200:
+                log(f'info: sent {basename}')
+            else:
+                raise ConnectionError(f'error: bad req ({sent.status_code}) for "{basename}": {sent.text}')
+
+
+@safelogged(bool)
+def webhook_royal_map() -> bool:
+    raise Exception('oops')
+    return True
+
+
+def _webhook_seasonal(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-seasonal-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        strip_format_codes(map['name']),
+        color=CAMPAIGN_SERIES[int(map['mapIndex'] / 5)]
+    )
+
+    embed.add_embed_field(
+        'Medals',
+        f'''
+<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
+<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
+<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
+<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
+''',
+        False
+    )
+
+    embed.add_embed_field('Links', f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})')
+
+    embed.set_thumbnail(map['thumbnailUrl'])
+    webhook.add_embed(embed)
+    webhook.execute()
+
+
+@safelogged(bool)
+def webhook_seasonal_maps() -> bool:
+    maps: list[dict] = []
 
     with sql.connect(file_db) as con:
         con.row_factory = sql.Row
@@ -687,40 +854,19 @@ def webhook_seasonal_maps() -> None:
             maps.append(dict(entry))
 
     for map in maps:
-        sleep(1)
+        time.sleep(1)
+        _webhook_seasonal(map)
 
-        webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-seasonal-updates'])
-
-        embed: DiscordEmbed = DiscordEmbed(
-            strip_format_codes(map['name']),
-            color=series[int(map['mapIndex'] / 5)]
-        )
-
-        embed.add_embed_field(
-            'Medals',
-            f'''
-<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
-<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
-<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
-<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
-''',
-            False
-        )
-
-        embed.add_embed_field('Links', f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})')
-
-        embed.set_thumbnail(map['thumbnailUrl'])
-        webhook.add_embed(embed)
-        webhook.execute()
+    return True
 
 
-@logged_and_tried
-def webhook_totd_map() -> None:
-    pass
+@safelogged(bool)
+def webhook_totd_map() -> bool:
+    return True
 
 
-@logged_and_tried
-def webhook_weekly_maps() -> None:
+@safelogged(bool)
+def webhook_weekly_maps() -> bool:
     maps: list[dict] = []
 
     with sql.connect(file_db) as con:
@@ -732,7 +878,7 @@ def webhook_weekly_maps() -> None:
             maps.append(dict(entry))
 
     for map in maps:
-        sleep(1)
+        time.sleep(1)
 
         webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-weekly-updates'])
 
@@ -759,19 +905,62 @@ def webhook_weekly_maps() -> None:
         webhook.add_embed(embed)
         webhook.execute()
 
-
-@logged_and_tried
-def webhook_weekly_warriors() -> None:
-    pass
+    return True
 
 
-@logged_and_tried
+@safelogged(bool)
+def webhook_weekly_warriors() -> bool:
+    return True
+
+
+@safelogged()
 def write_db_key_val(key: str, val) -> None:
     with sql.connect(file_db) as con:
         cur: sql.Cursor = con.cursor()
         cur.execute('BEGIN')
         cur.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
         cur.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
+        cur.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{stamp()}")')
+
+
+@safelogged(bool, do_log=False)
+def schedule(key: str, ts: int, schedule_func, table: str, webhook_func, warrior_func = None) -> bool:
+    val: str = read_db_key_val(key)
+    if ts <= (int(val) if len(val) else 0):
+        return False
+
+    tries = 4  # total = this + 1
+    while not (success := schedule_func()) and tries:
+        log(f'error: {schedule_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
+        tries -= 1
+        time.sleep(5)
+    if not success:
+        write_db_key_val(key, ts + 60*3)
+        raise RuntimeError(f'error: {schedule_func.__name__}(), trying again in 3 minutes')
+
+    tries = 4
+    while not (success := get_map_infos(table)) and tries:
+        log(f'error: get_map_infos({table}), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
+        tries -= 1
+        time.sleep(5)
+    if not success:
+        write_db_key_val(key, ts + 60*3)
+        raise RuntimeError(f'error: get_map_infos({table}), trying again in 3 minutes')
+
+    # if not webhook_func():
+    #     raise RuntimeError(f'error: {webhook_func.__name__}()')
+
+    # if not warrior_func:
+    return True
+    tries = 9
+    while not (success := warrior_func()) and tries:
+        log(f'error: {warrior_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
+        tries -= 1
+        time.sleep(5)
+    if not success:
+        raise RuntimeError(f'error: {warrior_func.__name__}()')
+
+    return True
 
 
 def main() -> None:
@@ -779,37 +968,20 @@ def main() -> None:
     tokens = get_tokens()
 
     while True:
-        sleep(1)
+        time.sleep(1)
         print(f'{now()} loop')
-        ts: int = int(time())
+        ts: int = stamp()
 
-        val: str = read_db_key_val('next_weekly')
-        if ts > (int(val) if len(val) > 0 else 0):
-            schedule_weekly_maps()
-            get_map_infos('Weekly')
-            webhook_weekly_maps()
-            schedule_weekly_warriors()
-
-        val = read_db_key_val('next_seasonal')
-        if ts > (int(val) if len(val) > 0 else 0):
-            schedule_seasonal_maps()
-            get_map_infos('Seasonal')
-            webhook_seasonal_maps()
-
-        val = read_db_key_val('next_totd')
-        if ts > (int(val) if len(val) > 0 else 0):
-            schedule_totd_maps()
-            get_map_infos('Totd')
-            webhook_totd_map()
-
-        val = read_db_key_val('next_royal')
-        if ts > (int(val) if len(val) > 0 else 0):
-            schedule_royal_maps()
-            get_map_infos('Royal')
-            webhook_royal_map()
-
-        pass
+        if any((
+            # schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal_map),
+            schedule('next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal_maps),
+            # schedule('next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd_map),
+            schedule('next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly_maps, schedule_weekly_warriors),
+        )):
+            tables_to_json()
+            to_github()
 
 
 if __name__ == '__main__':
     main()
+    # to_github()
