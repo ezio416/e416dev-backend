@@ -824,6 +824,7 @@ def _webhook_seasonal(map: dict) -> None:
 
     embed: DiscordEmbed = DiscordEmbed(
         strip_format_codes(map['name']),
+        f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
         color=CAMPAIGN_SERIES[int(map['mapIndex'] / 5)]
     )
 
@@ -838,9 +839,8 @@ def _webhook_seasonal(map: dict) -> None:
         False
     )
 
-    embed.add_embed_field('Links', f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})')
+    embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
 
-    embed.set_thumbnail(map['thumbnailUrl'])
     webhook.add_embed(embed)
     webhook.execute()
 
@@ -869,6 +869,33 @@ def webhook_totd_map() -> bool:
     return True
 
 
+def _webhook_weekly(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-weekly-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        f'Week {map['week']}, Map {map['number']}',
+        f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
+            })\nby [{get_account_name(map['author'])}](https://trackmania.io/#/player/{map['author']})',
+        color=CAMPAIGN_SERIES[map['mapIndex']]
+    )
+
+    embed.add_embed_field(
+        'Medals',
+        f'''
+<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
+<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
+<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
+<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
+''',
+        False
+    )
+
+    embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
+
+    webhook.add_embed(embed)
+    webhook.execute()
+
+
 @safelogged(bool)
 def webhook_weekly_maps() -> bool:
     maps: list[dict] = []
@@ -883,31 +910,7 @@ def webhook_weekly_maps() -> bool:
 
     for map in maps:
         time.sleep(1)
-
-        webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-weekly-updates'])
-
-        embed: DiscordEmbed = DiscordEmbed(
-            strip_format_codes(map['name']),
-            f'by [{get_account_name(map['author'])}](https://trackmania.io/#/player/{map['author']})\nWeek {map['week']}',
-            color='FFDD00'
-        )
-
-        embed.add_embed_field(
-            'Medals',
-            f'''
-<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
-<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
-<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
-<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
-''',
-            False
-        )
-
-        embed.add_embed_field('Links', f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})')
-
-        embed.set_thumbnail(map['thumbnailUrl'])
-        webhook.add_embed(embed)
-        webhook.execute()
+        _webhook_weekly(map)
 
     return True
 
@@ -951,8 +954,8 @@ def schedule(key: str, ts: int, schedule_func, table: str, webhook_func, warrior
         write_db_key_val(key, ts + 60*3)
         raise RuntimeError(f'error: get_map_infos({table}), trying again in 3 minutes')
 
-    # if not webhook_func():
-    #     raise RuntimeError(f'error: {webhook_func.__name__}()')
+    if not webhook_func():
+        raise RuntimeError(f'error: {webhook_func.__name__}()')
 
     # if not warrior_func:
     return True
