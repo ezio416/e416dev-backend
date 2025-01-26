@@ -144,7 +144,6 @@ def get_map_infos(table: str) -> bool:
             map['author']          = entry['author']
             map['authorTime']      = entry['authorScore']
             map['bronzeTime']      = entry['bronzeScore']
-            map['fileUid']         = re.search(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}', entry['fileUrl'])[0]
             map['goldTime']        = entry['goldScore']
             map['mapId']           = entry['mapId']
             map['name']            = entry['name']
@@ -162,7 +161,6 @@ def get_map_infos(table: str) -> bool:
                 SET author          = "{map['author']}",
                     authorTime      = "{map['authorTime']}",
                     bronzeTime      = "{map['bronzeTime']}",
-                    fileUid         = "{map['fileUid']}",
                     goldTime        = "{map['goldTime']}",
                     mapId           = "{map['mapId']}",
                     name            = "{map['name']}",
@@ -286,16 +284,15 @@ def schedule_royal_maps() -> bool:
                 authorTime      INT,
                 bronzeTime      INT,
                 campaignId      INT,
-                downloadUrl     CHAR(86),
                 goldTime        INT,
                 mapId           CHAR(36),
                 mapUid          VARCHAR(27) PRIMARY KEY,
                 month           INT,
                 monthDay        INT,
                 name            TEXT,
+                number          INT,
                 silverTime      INT,
                 submitter       CHAR(36),
-                thumbnailUrl    CHAR(90),
                 timestampEnd    INT,
                 timestampStart  INT,
                 timestampUpload INT,
@@ -305,6 +302,8 @@ def schedule_royal_maps() -> bool:
         ''')
 
         mapUids: set = set()
+
+        number: int = 0
 
         for month in reversed(maps_royal['monthList']):
             for map in month['days']:
@@ -318,12 +317,14 @@ def schedule_royal_maps() -> bool:
                 else:
                     mapUids.add(mapUid)
 
+                number += 1
                 cur.execute(f'''
                     INSERT INTO Royal (
                         campaignId,
                         mapUid,
                         month,
                         monthDay,
+                        number,
                         timestampEnd,
                         timestampStart,
                         weekDay,
@@ -333,6 +334,7 @@ def schedule_royal_maps() -> bool:
                         "{mapUid}",
                         "{month['month']}",
                         "{map['monthDay']}",
+                        "{number}",
                         "{map['endTimestamp']}",
                         "{map['startTimestamp']}",
                         "{map['day']}",
@@ -370,7 +372,6 @@ def schedule_seasonal_maps() -> bool:
                 bronzeTime           INT,
                 campaignId           INT,
                 campaignIndex        INT,
-                fileUid              CHAR(36),
                 goldTime             INT,
                 leaderboardGroupUid  CHAR(36),
                 mapId                CHAR(36),
@@ -522,17 +523,16 @@ def schedule_totd_maps() -> bool:
                 authorTime      INT,
                 bronzeTime      INT,
                 campaignId      INT,
-                downloadUrl     CHAR(86),
                 goldTime        INT,
                 mapId           CHAR(36),
                 mapUid          VARCHAR(27) PRIMARY KEY,
                 month           INT,
                 monthDay        INT,
                 name            TEXT,
+                number          INT,
                 seasonUid       CHAR(36),
                 silverTime      INT,
                 submitter       CHAR(36),
-                thumbnailUrl    CHAR(90),
                 timestampEnd    INT,
                 timestampStart  INT,
                 timestampUpload INT,
@@ -541,18 +541,22 @@ def schedule_totd_maps() -> bool:
             );
         ''')
 
+        number: int = 0
+
         for month in reversed(maps_totd['monthList']):
             for map in month['days']:
                 mapUid: str = map['mapUid']
                 if len(mapUid) == 0:
                     break
 
+                number += 1
                 cur.execute(f'''
                     INSERT INTO Totd (
                         campaignId,
                         mapUid,
                         month,
                         monthDay,
+                        number,
                         seasonUid,
                         timestampEnd,
                         timestampStart,
@@ -563,6 +567,7 @@ def schedule_totd_maps() -> bool:
                         "{mapUid}",
                         "{month['month']}",
                         "{map['monthDay']}",
+                        "{number}",
                         "{map['seasonUid']}",
                         "{map['endTimestamp']}",
                         "{map['startTimestamp']}",
@@ -606,7 +611,6 @@ def schedule_weekly_maps() -> bool:
                 authorTime           INT,
                 bronzeTime           INT,
                 campaignId           INT,
-                fileUid              CHAR(36),
                 goldTime             INT,
                 mapId                CHAR(36),
                 mapIndex             INT,
@@ -745,9 +749,9 @@ def strip_format_codes(raw: str) -> str:
 @safelogged()
 def tables_to_json() -> None:
     for table_name, output_file in (
-        # ('Royal',    file_royal),
+        ('Royal',    file_royal),
         ('Seasonal', file_seasonal),
-        # ('Totd',     file_totd),
+        ('Totd',     file_totd),
         # ('Warrior',  file_warrior),
         ('Weekly',   file_weekly),
     ):
@@ -973,9 +977,9 @@ def main() -> None:
         ts: int = stamp()
 
         if any((
-            # schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal_map),
+            schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal_map),
             schedule('next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal_maps),
-            # schedule('next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd_map),
+            schedule('next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd_map),
             schedule('next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly_maps, schedule_weekly_warriors),
         )):
             tables_to_json()
@@ -984,4 +988,5 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+    # tables_to_json()
     # to_github()
