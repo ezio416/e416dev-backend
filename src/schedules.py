@@ -196,7 +196,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
-        print(f'getting records for {map['name']}')
+        log(f'info: getting records for "{map['name']}"')
 
         time.sleep(WAIT_TIME)
         req: dict = live.get(
@@ -214,7 +214,6 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
         cur.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorSeasonal (
                 authorTime  INT,
-                campaignId  INT,
                 custom      INT,
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
@@ -228,7 +227,6 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
             cur.execute(f'''
                 INSERT INTO WarriorSeasonal (
                     authorTime,
-                    campaignId,
                     custom,
                     mapUid,
                     name,
@@ -237,7 +235,6 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                     worldRecord
                 ) VALUES (
                     "{map['authorTime']}",
-                    "{map['campaignId']}",
                     {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                     "{map['mapUid']}",
                     "{map['name']}",
@@ -334,7 +331,70 @@ def schedule_totd_maps(tokens: dict) -> bool:
 
 
 @safelogged(bool)
-def schedule_totd_warrior() -> bool:
+def schedule_totd_warrior(tokens: dict) -> bool:
+    with sql.connect(FILE_DB) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        map: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
+
+    log(f'info: getting records for TOTD {map['year']}-{map['month']}-{map['monthDay']}')
+
+    time.sleep(WAIT_TIME)
+    req: dict = live.get(
+        tokens['live'],
+        f'api/token/leaderboard/group/Personal_Best/map/{map['mapUid']}/top'
+    )
+
+    map['worldRecord'] = req['tops'][0]['top'][0]['score']
+    map['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
+
+    with sql.connect(FILE_DB) as con:
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        cur.execute(f'''
+            CREATE TABLE IF NOT EXISTS WarriorTotd (
+                authorTime  INT,
+                custom      INT,
+                mapUid      VARCHAR(27) PRIMARY KEY,
+                month       INT,
+                monthDay    INT,
+                name        TEXT,
+                reason      TEXT,
+                warriorTime INT,
+                worldRecord INT,
+                year        INT
+            );
+        ''')
+
+        cur.execute(f'''
+            INSERT INTO WarriorTotd (
+                authorTime,
+                custom,
+                mapUid,
+                month,
+                monthDay,
+                name,
+                reason,
+                warriorTime,
+                worldRecord,
+                year
+            ) VALUES (
+                "{map['authorTime']}",
+                {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
+                "{map['mapUid']}",
+                "{map['month']}",
+                "{map['monthDay']}",
+                "{map['name']}",
+                {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                "{map['warriorTime']}",
+                "{map['worldRecord']}",
+                "{map['year']}"
+            )
+        ''')
+
     return True
 
 
@@ -452,7 +512,6 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
         cur.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorWeekly (
                 authorTime  INT,
-                campaignId  INT,
                 custom      INT,
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
@@ -467,7 +526,6 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
             cur.execute(f'''
                 INSERT INTO WarriorWeekly (
                     authorTime,
-                    campaignId,
                     custom,
                     mapUid,
                     name,
@@ -522,13 +580,21 @@ def schedule(tokens: dict, key: str, ts: int, schedule_func, table: str, webhook
 
 
 @safelogged(bool, do_log=False)
-def schedule_warriors(tokens: dict, key: str, ts: int, table: str, warrior_func, webhook_func) -> bool:
+def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_func) -> bool:
     val: str = read_db_key_val(key)
     if ts <= (int(val) if len(val) else 0):
         return False
 
     tries = 4  # total = this + 1
+    while not (success := warrior_func(tokens)) and tries:
+        log(f'error: {warrior_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
+        tries -= 1
+        time.sleep(5)
+    if not success:
+        write_db_key_val(key, ts + 60*3)
+        raise RuntimeError(f'error: {warrior_func.__name__}(), trying again in 3 minutes')
 
-    pass
+    if not webhook_func(tokens):
+        raise RuntimeError(f'error: {webhook_func.__name__}()')
 
     return True

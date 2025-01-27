@@ -26,9 +26,9 @@ def main() -> None:
             to_github()
 
         if any((
-            schedule_warriors(tokens, 'warrior_seasonal', ts, 'SeasonalWarrior', schedule_seasonal_warriors, webhook_seasonal_warriors),
-            schedule_warriors(tokens, 'warrior_totd',     ts, 'TotdWarrior',     schedule_totd_warrior,      webhook_totd_warrior),
-            schedule_warriors(tokens, 'warrior_weekly',   ts, 'WeeklyWarrior',   schedule_weekly_warriors,   webhook_weekly_warriors),
+            schedule_warriors(tokens, 'warrior_seasonal', ts, schedule_seasonal_warriors, webhook_seasonal_warriors),
+            schedule_warriors(tokens, 'warrior_totd',     ts, schedule_totd_warrior,      webhook_totd_warrior),
+            schedule_warriors(tokens, 'warrior_weekly',   ts, schedule_weekly_warriors,   webhook_weekly_warriors),
         )):
             warriors_to_json()
             to_github()
