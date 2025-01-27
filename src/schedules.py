@@ -214,6 +214,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
         cur.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorSeasonal (
                 authorTime  INT,
+                campaignId  INT,
                 custom      INT,
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
@@ -227,6 +228,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
             cur.execute(f'''
                 INSERT INTO WarriorSeasonal (
                     authorTime,
+                    campaignId,
                     custom,
                     mapUid,
                     name,
@@ -235,6 +237,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                     worldRecord
                 ) VALUES (
                     "{map['authorTime']}",
+                    "{map['campaignId']}",
                     {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                     "{map['mapUid']}",
                     "{map['name']}",
@@ -339,7 +342,7 @@ def schedule_totd_warrior(tokens: dict) -> bool:
         cur.execute('BEGIN')
         map: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
-    log(f'info: getting records for TOTD {map['year']}-{map['month']}-{map['monthDay']}')
+    log(f'info: getting records for TOTD {map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}')
 
     time.sleep(WAIT_TIME)
     req: dict = live.get(
@@ -354,18 +357,17 @@ def schedule_totd_warrior(tokens: dict) -> bool:
         cur: sql.Cursor = con.cursor()
 
         cur.execute('BEGIN')
+
         cur.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorTotd (
                 authorTime  INT,
                 custom      INT,
+                date        CHAR(10),
                 mapUid      VARCHAR(27) PRIMARY KEY,
-                month       INT,
-                monthDay    INT,
                 name        TEXT,
                 reason      TEXT,
                 warriorTime INT,
-                worldRecord INT,
-                year        INT
+                worldRecord INT
             );
         ''')
 
@@ -373,25 +375,21 @@ def schedule_totd_warrior(tokens: dict) -> bool:
             INSERT INTO WarriorTotd (
                 authorTime,
                 custom,
+                date,
                 mapUid,
-                month,
-                monthDay,
                 name,
                 reason,
                 warriorTime,
-                worldRecord,
-                year
+                worldRecord
             ) VALUES (
                 "{map['authorTime']}",
                 {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
+                "{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}",
                 "{map['mapUid']}",
-                "{map['month']}",
-                "{map['monthDay']}",
                 "{map['name']}",
                 {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
                 "{map['warriorTime']}",
-                "{map['worldRecord']}",
-                "{map['year']}"
+                "{map['worldRecord']}"
             )
         ''')
 
