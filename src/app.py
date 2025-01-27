@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2024-01-26
+# m 2024-01-27
 
 from base64 import b64encode
 from datetime import datetime as dt
@@ -813,9 +813,12 @@ def to_github() -> None:
                 raise ConnectionError(f'error: bad req ({sent.status_code}) for "{basename}": {sent.text}')
 
 
+def _webhook_royal(map: dict) -> None:
+    pass
+
+
 @safelogged(bool)
-def webhook_royal_map() -> bool:
-    raise Exception('oops')
+def webhook_royal() -> bool:
     return True
 
 
@@ -846,7 +849,7 @@ def _webhook_seasonal(map: dict) -> None:
 
 
 @safelogged(bool)
-def webhook_seasonal_maps() -> bool:
+def webhook_seasonal() -> bool:
     maps: list[dict] = []
 
     with sql.connect(file_db) as con:
@@ -864,8 +867,44 @@ def webhook_seasonal_maps() -> bool:
     return True
 
 
+def _webhook_totd(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-totd-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
+        f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
+            })\nby [{get_account_name(map['author'])}](https://trackmania.io/#/player/{map['author']})',
+        color='00CCFF'
+    )
+
+    embed.add_embed_field(
+        'Medals',
+        f'''
+<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
+<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
+<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
+<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
+''',
+        False
+    )
+
+    embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
+
+    webhook.add_embed(embed)
+    webhook.execute()
+
+
 @safelogged(bool)
-def webhook_totd_map() -> bool:
+def webhook_totd() -> bool:
+    with sql.connect(file_db) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        latest: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
+
+    _webhook_totd(latest)
+
     return True
 
 
@@ -897,7 +936,7 @@ def _webhook_weekly(map: dict) -> None:
 
 
 @safelogged(bool)
-def webhook_weekly_maps() -> bool:
+def webhook_weekly() -> bool:
     maps: list[dict] = []
 
     with sql.connect(file_db) as con:
@@ -980,10 +1019,10 @@ def main() -> None:
         ts: int = stamp()
 
         if any((
-            schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal_map),
-            schedule('next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal_maps),
-            schedule('next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd_map),
-            schedule('next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly_maps, schedule_weekly_warriors),
+            schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
+            schedule('next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),
+            schedule('next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd),
+            schedule('next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly, schedule_weekly_warriors),
         )):
             tables_to_json()
             to_github()
@@ -991,5 +1030,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-    # tables_to_json()
-    # to_github()
