@@ -27,7 +27,6 @@ def tables_to_json() -> None:
         ('Royal',    FILE_ROYAL),
         ('Seasonal', FILE_SEASONAL),
         ('Totd',     FILE_TOTD),
-        # ('Warrior',  FILE_WARRIOR),
         ('Weekly',   FILE_WEEKLY),
     ):
         with open(output_file, 'w', newline='\n') as f:
@@ -37,7 +36,14 @@ def tables_to_json() -> None:
 
 @safelogged()
 def warriors_to_json() -> None:
-    pass
+    warriors: dict[str, dict] = {}
+
+    for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
+        warriors[table] = read_table(f'Warrior{table}')
+
+    with open(FILE_WARRIOR, 'w', newline='\n') as f:
+        json.dump(warriors, f, indent=4)
+        f.write('\n')
 
 
 @safelogged()
