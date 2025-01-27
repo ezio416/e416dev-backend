@@ -89,15 +89,31 @@ def format_race_time(input_ms: int) -> str:
 
 @safelogged(str)
 def get_account_name(account_id: str) -> str:
+    if account_id == 'd2372a08-a8a1-46cb-97fb-23a161d85ad0':
+        return 'Nadeo'
+
     global accounts
+    global tokens
 
     ts: int = stamp()
 
     if account_id in accounts and ts < accounts[account_id]['ts']:
         return accounts[account_id]['name']
 
-    time.sleep(WAIT_TIME)
-    req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+    req: dict = {}
+
+    try:
+        time.sleep(WAIT_TIME)
+        req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+
+    except ValueError:
+        tokens['oauth'] = get_token_oauth()
+
+        time.sleep(WAIT_TIME)
+        req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+
+    if not req or type(req) is not dict:
+        raise ValueError(f'bad account ID: {account_id}')
 
     name: str = req[account_id]
     accounts[account_id] = {}
@@ -174,6 +190,15 @@ def get_map_infos(table: str) -> bool:
     return True
 
 
+def get_token_oauth() -> auth.Token:  # workaround for oauth refreshing
+    log('info: getting oauth token')
+    return auth.get_token(
+        auth.audience_oauth,
+        os.environ['TM_OAUTH_IDENTIFIER'],
+        os.environ['TM_OAUTH_SECRET']
+    )
+
+
 def get_tokens() -> dict:
     log('info: getting core token')
     token_core: auth.Token = auth.get_token(
@@ -193,12 +218,7 @@ def get_tokens() -> dict:
         True
     )
 
-    log('info: getting oauth token')
-    token_oauth: auth.Token = auth.get_token(
-        auth.audience_oauth,
-        os.environ['TM_OAUTH_IDENTIFIER'],
-        os.environ['TM_OAUTH_SECRET']
-    )
+    token_oauth: auth.Token = get_token_oauth()
 
     return {
         'core': token_core,
@@ -813,24 +833,7 @@ def to_github() -> None:
                 raise ConnectionError(f'error: bad req ({sent.status_code}) for "{basename}": {sent.text}')
 
 
-def _webhook_royal(map: dict) -> None:
-    pass
-
-
-@safelogged(bool)
-def webhook_royal() -> bool:
-    return True
-
-
-def _webhook_seasonal(map: dict) -> None:
-    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-seasonal-updates'])
-
-    embed: DiscordEmbed = DiscordEmbed(
-        strip_format_codes(map['name']),
-        f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
-        color=CAMPAIGN_SERIES[int(map['mapIndex'] / 5)]
-    )
-
+def _webhook_execute(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> None:
     embed.add_embed_field(
         'Medals',
         f'''
@@ -846,6 +849,48 @@ def _webhook_seasonal(map: dict) -> None:
 
     webhook.add_embed(embed)
     webhook.execute()
+
+
+def _webhook_royal(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-royal-updates'])
+
+    account_name: str = get_account_name(map['author'])
+    if not account_name:
+        raise ValueError(f'no account name for {map['author']}')
+
+    embed: DiscordEmbed = DiscordEmbed(
+        f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
+        f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
+            })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
+        color='FFAA00'
+    )
+
+    _webhook_execute(webhook, embed, map)
+
+
+@safelogged(bool)
+def webhook_royal() -> bool:  # need to check if map is new
+    with sql.connect(file_db) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        latest: dict = dict(cur.execute('SELECT * FROM Royal ORDER BY number DESC').fetchone())
+
+    _webhook_royal(latest)
+    return True
+
+
+def _webhook_seasonal(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-seasonal-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        strip_format_codes(map['name']),
+        f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
+        color=CAMPAIGN_SERIES[int(map['mapIndex'] / 5)]
+    )
+
+    _webhook_execute(webhook, embed, map)
 
 
 @safelogged(bool)
@@ -870,28 +915,18 @@ def webhook_seasonal() -> bool:
 def _webhook_totd(map: dict) -> None:
     webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-totd-updates'])
 
+    account_name: str = get_account_name(map['author'])
+    if not account_name:
+        raise ValueError(f'no account name for {map['author']}')
+
     embed: DiscordEmbed = DiscordEmbed(
         f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
         f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
-            })\nby [{get_account_name(map['author'])}](https://trackmania.io/#/player/{map['author']})',
+            })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
         color='00CCFF'
     )
 
-    embed.add_embed_field(
-        'Medals',
-        f'''
-<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
-<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
-<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
-<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
-''',
-        False
-    )
-
-    embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
-
-    webhook.add_embed(embed)
-    webhook.execute()
+    _webhook_execute(webhook, embed, map)
 
 
 @safelogged(bool)
@@ -904,35 +939,24 @@ def webhook_totd() -> bool:
         latest: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
     _webhook_totd(latest)
-
     return True
 
 
 def _webhook_weekly(map: dict) -> None:
     webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-weekly-updates'])
 
+    account_name: str = get_account_name(map['author'])
+    if not account_name:
+        raise ValueError(f'no account name for {map['author']}')
+
     embed: DiscordEmbed = DiscordEmbed(
         f'Week {map['week']}, Map {map['number']}',
         f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
-            })\nby [{get_account_name(map['author'])}](https://trackmania.io/#/player/{map['author']})',
+            })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
         color=CAMPAIGN_SERIES[map['mapIndex']]
     )
 
-    embed.add_embed_field(
-        'Medals',
-        f'''
-<:MedalAuthor:736600847219294281> {format_race_time(map['authorTime'])}
-<:MedalGold:736600847588261988> {format_race_time(map['goldTime'])}
-<:MedalSilver:736600847454175363> {format_race_time(map['silverTime'])}
-<:MedalBronze:736600847630336060> {format_race_time(map['bronzeTime'])}
-''',
-        False
-    )
-
-    embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
-
-    webhook.add_embed(embed)
-    webhook.execute()
+    _webhook_execute(webhook, embed, map)
 
 
 @safelogged(bool)
@@ -1019,10 +1043,10 @@ def main() -> None:
         ts: int = stamp()
 
         if any((
-            schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
             schedule('next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),
             schedule('next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd),
             schedule('next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly, schedule_weekly_warriors),
+            schedule('next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
         )):
             tables_to_json()
             to_github()
