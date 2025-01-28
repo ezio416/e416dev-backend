@@ -487,12 +487,11 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
 
         cur.execute('BEGIN')
         for entry in cur.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(10)[5:]:
-        # for entry in cur.execute('SELECT * FROM Weekly ORDER BY number ASC').fetchall():
             map = dict(entry)
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
-        print(f'getting records for week {map['week']} map {map['name']}')
+        log(f'info: getting records for week {map['week']} map "{map['name']}"')
 
         time.sleep(WAIT_TIME)
         req: dict = live.get(
@@ -533,7 +532,6 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     worldRecord
                 ) VALUES (
                     "{map['authorTime']}",
-                    "{map['campaignId']}",
                     {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                     "{map['mapUid']}",
                     "{map['name']}",
@@ -592,7 +590,9 @@ def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_fun
         write_db_key_val(key, ts + 60*3)
         raise RuntimeError(f'error: {warrior_func.__name__}(), trying again in 3 minutes')
 
-    if not webhook_func(tokens):
+    if not webhook_func():
         raise RuntimeError(f'error: {webhook_func.__name__}()')
+
+    write_db_key_val(key, 2_147_000_000)
 
     return True
