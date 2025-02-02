@@ -1,11 +1,18 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-02
 
 import os
 
 
-CAMPAIGN_SERIES: tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
-WAIT_TIME:       float      = 0.5
+CAMPAIGN_SERIES:   tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
+DISCORD_WAIT_TIME: float      = 1.0
+COLOR_WARRIOR:     str        = '33CCFF'
+MEDAL_AUTHOR:      str        = '<:MedalAuthor:736600847219294281>'
+MEDAL_BRONZE:      str        = '<:MedalBronze:736600847630336060>'
+MEDAL_GOLD:        str        = '<:MedalGold:736600847588261988>'
+MEDAL_SILVER:      str        = '<:MedalSilver:736600847454175363>'
+MEDAL_WARRIOR:     str        = '<:MedalWarrior:1305798298690392155>'
+WAIT_TIME:         float      = 0.5
 
 DIR_PARENT:        str = f'{os.path.dirname(__file__).replace('\\', '/')}/..'
 DIR_DATA:          str = f'{DIR_PARENT}/data'

@@ -8,15 +8,6 @@ from errors import safelogged
 from utils import *
 
 
-COLOR_WARRIOR:     str   = '33CCFF'
-EXECUTE_WAIT_TIME: float = 1.0
-MEDAL_AUTHOR:      str   = '<:MedalAuthor:736600847219294281>'
-MEDAL_BRONZE:      str   = '<:MedalBronze:736600847630336060>'
-MEDAL_GOLD:        str   = '<:MedalGold:736600847588261988>'
-MEDAL_SILVER:      str   = '<:MedalSilver:736600847454175363>'
-MEDAL_WARRIOR:     str   = '<:MedalWarrior:1305798298690392155>'
-
-
 def execute_schedule(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> None:
     embed_str: str = f'{MEDAL_AUTHOR} {format_race_time(map['authorTime'])}'
     embed_str += f'\n{MEDAL_GOLD} {format_race_time(map['goldTime'])}'
@@ -27,7 +18,7 @@ def execute_schedule(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) ->
     embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
 
     webhook.add_embed(embed)
-    time.sleep(EXECUTE_WAIT_TIME)
+    time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
 
 
@@ -51,7 +42,7 @@ def execute_warrior(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> 
     embed.add_embed_field('Times', embed_str, False)
 
     webhook.add_embed(embed)
-    time.sleep(EXECUTE_WAIT_TIME)
+    time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
 
 
