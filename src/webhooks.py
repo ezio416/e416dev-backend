@@ -87,8 +87,53 @@ def webhook_seasonal() -> bool:
     return True
 
 
+def _webhook_seasonal_warrior(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-warrior-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        f'{map['name']}',
+        f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
+        color='33CCFF'
+    )
+
+    at: int = map['authorTime']
+    wm: int = map['warriorTime']
+    wr: int = map['worldRecord']
+
+    fmt_rt = format_race_time
+
+    if wr <= wm:
+        embed_str: str = f'\n🥇 {fmt_rt(wr)}'
+        embed_str += f'\n<:MedalWarrior:1305798298690392155> **{fmt_rt(wm)}** *(+{fmt_rt(wm - wr)})*'
+        embed_str += f'\n<:MedalAuthor:736600847219294281> {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+
+    else:
+        embed_str: str = f'\n<:MedalWarrior:1305798298690392155> **{fmt_rt(wm)}**'
+        embed_str += f'\n<:MedalAuthor:736600847219294281> {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+        embed_str += f'\n🥇 {fmt_rt(wr)} *(+{fmt_rt(wr - at)})*'
+
+    embed.add_embed_field('Times', embed_str, False)
+
+    webhook.add_embed(embed)
+    webhook.execute()
+
+
 @safelogged(bool)
 def webhook_seasonal_warriors() -> bool:
+    maps: list[dict] = []
+
+    with sql.connect(FILE_DB) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        for entry in cur.execute('SELECT * FROM WarriorSeasonal ORDER BY campaignId DESC, name ASC;').fetchmany(25):
+            maps.append(dict(entry))
+
+    for map in maps:
+        time.sleep(1)
+        _webhook_seasonal_warrior(map)
+
     return True
 
 
@@ -134,7 +179,7 @@ def webhook_totd_warrior() -> bool:
     webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-warrior-updates'])
 
     embed: DiscordEmbed = DiscordEmbed(
-        f'{latest['date']}',
+        f'Track of the Day {latest['date']}',
         f'[{strip_format_codes(latest['name'])}](https://trackmania.io/#/leaderboard/{latest['mapUid']})',
         color='33CCFF'
     )
@@ -199,6 +244,55 @@ def webhook_weekly(tokens: dict) -> bool:
     return True
 
 
+def _webhook_weekly_warrior(map: dict) -> None:
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-warrior-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        f'Weekly Short #{map['number']}',
+        f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
+        color='33CCFF'
+    )
+
+    at: int = map['authorTime']
+    wm: int = map['warriorTime']
+    wr: int = map['worldRecord']
+
+    fmt_rt = format_race_time
+
+    if wr <= wm:
+        embed_str: str = f'\n🥇 {fmt_rt(wr)}'
+        embed_str += f'\n<:MedalWarrior:1305798298690392155> **{fmt_rt(wm)}** *(+{fmt_rt(wm - wr)})*'
+        embed_str += f'\n<:MedalAuthor:736600847219294281> {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+
+    else:
+        embed_str: str = f'\n<:MedalWarrior:1305798298690392155> **{fmt_rt(wm)}**'
+        embed_str += f'\n<:MedalAuthor:736600847219294281> {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+        embed_str += f'\n🥇 {fmt_rt(wr)} *(+{fmt_rt(wr - at)})*'
+
+    embed.add_embed_field('Times', embed_str, False)
+
+    webhook.add_embed(embed)
+    webhook.execute()
+
+
 @safelogged(bool)
 def webhook_weekly_warriors() -> bool:
+    maps: list[dict] = []
+
+    with sql.connect(FILE_DB) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+
+        cur.execute('BEGIN')
+        for entry in reversed(cur.execute('SELECT * FROM WarriorWeekly ORDER BY number DESC').fetchmany(5)):
+            maps.append(dict(entry))
+
+    for map in maps:
+        time.sleep(1)
+        _webhook_weekly_warrior(map)
+
     return True
+
+
+if __name__ == '__main__':
+    webhook_weekly_warriors()
