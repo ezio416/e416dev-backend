@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-02
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
@@ -114,8 +114,8 @@ def webhook_totd(tokens: dict) -> bool:
     with sql.connect(FILE_DB) as con:
         con.row_factory = sql.Row
         cur: sql.Cursor = con.cursor()
-
         cur.execute('BEGIN')
+
         latest: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
     _webhook_totd(tokens, latest)
@@ -124,6 +124,42 @@ def webhook_totd(tokens: dict) -> bool:
 
 @safelogged(bool)
 def webhook_totd_warrior() -> bool:
+    with sql.connect(FILE_DB) as con:
+        con.row_factory = sql.Row
+        cur: sql.Cursor = con.cursor()
+        cur.execute('BEGIN')
+
+        latest: dict = dict(cur.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
+
+    webhook: DiscordWebhook = DiscordWebhook(os.environ['dcwh-tm-warrior-updates'])
+
+    embed: DiscordEmbed = DiscordEmbed(
+        f'{latest['date']}',
+        f'[{strip_format_codes(latest['name'])}](https://trackmania.io/#/leaderboard/{latest['mapUid']})',
+        color='33CCFF'
+    )
+
+    at: int = latest['authorTime']
+    wm: int = latest['warriorTime']
+    wr: int = latest['worldRecord']
+
+    fmt_rt = format_race_time
+
+    if wr <= wm:
+        embed_str: str = f'\n🥇 {fmt_rt(wr)}'
+        embed_str += f'\n<:MedalWarrior:1305798298690392155> **{fmt_rt(wm)}** *(+{fmt_rt(wm - wr)})*'
+        embed_str += f'\n<:MedalAuthor:736600847219294281> {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+
+    else:
+        embed_str: str = f'\n<:MedalWarrior:1305798298690392155> **{fmt_rt(wm)}**'
+        embed_str += f'\n<:MedalAuthor:736600847219294281> {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+        embed_str += f'\n🥇 {fmt_rt(wr)} *(+{fmt_rt(wr - at)})*'
+
+    embed.add_embed_field('Times', embed_str, False)
+
+    webhook.add_embed(embed)
+    webhook.execute()
+
     return True
 
 
