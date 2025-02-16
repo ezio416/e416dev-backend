@@ -4,12 +4,22 @@
 from utils import *
 
 
-def migrate_old_warriors() -> None:
-    with sql.connect('C:/Users/Ezio/Code/e416dev_api/tm.db') as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-        cur.execute('BEGIN')
+def display_db_epoch_vals():
+    table = read_table('KeyVals')
 
+    stage2 = []
+    for i, _ in enumerate(table):
+        stage2.append((table[i]['key'], int(table[i]['val'])))
+
+    stage3 = sorted(stage2, key=lambda pair: pair[1])
+
+    for key, val in stage3:
+        diff = val - stamp()
+        print(
+            f'{key:<16}',
+            f'{dt.fromtimestamp(int(val), timezone.utc).strftime('%Y-%m-%d %H:%M:%Sz')}',
+            f'({'in ' if diff > 0 else ''}{format_long_time(abs(diff))}{' ago' if diff <= 0 else ''})'
+        )
         camp: list[dict] = []
         for entry in cur.execute('SELECT * FROM CampaignWarriors').fetchall():
             camp.append(dict(entry))

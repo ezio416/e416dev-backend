@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-15
 
 from datetime import datetime as dt
 import json
@@ -10,6 +10,33 @@ import time
 from pytz import timezone as tz
 
 from globals import *
+
+
+def format_long_time(input_s: int):
+    sec = int(input_s)
+
+    week = int(sec / 604_800)
+    sec -= week * 604_800
+
+    day = int(sec / 86_400)
+    sec -= day * 86_400
+
+    hour = int(sec / 3_600)
+    sec -= hour * 3_600
+
+    min = int(sec / 60)
+    sec -= min * 60
+
+    ret = ''
+    if week:
+        ret += f'{week}w'
+    if day:
+        ret += f'{day}d'
+    if hour:
+        ret += f'{hour}h'
+    if min:
+        ret += f'{min}m'
+    return f'{ret}{sec}s'
 
 
 def format_race_time(input_ms: int) -> str:
