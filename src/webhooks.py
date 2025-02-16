@@ -43,8 +43,8 @@ def execute_warrior(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> 
     embed.add_embed_field('Times', embed_str, False)
 
     webhook.add_embed(embed)
-    # time.sleep(DISCORD_WAIT_TIME)
-    # webhook.execute()
+    time.sleep(DISCORD_WAIT_TIME)
+    webhook.execute()
     pass
 
 
