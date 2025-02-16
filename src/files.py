@@ -1,24 +1,100 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-16
 
 from errors import safelogged
+from types import TracebackType
 from utils import *
+
+
+class Cursor:
+    '''
+    Context manager for a database connection and cursor
+    '''
+
+    def __init__(self, path: str):
+        self.path = path
+
+    def __enter__(self):
+        self.con = sql.connect(self.path)
+        self.con.row_factory = sql.Row
+        self.cur = self.con.cursor()
+        self.cur.execute('BEGIN')
+        return self.cur
+
+    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: TracebackType):
+        self.cur.close()
+
+        if exc_type is exc_val is exc_tb is None:
+            self.con.commit()
+        else:
+            self.con.rollback()
+
+        self.con.close()
+
+
+@safelogged()
+def handle_tops(tops: list[dict], uid: str) -> int:
+    with Cursor(FILE_DB) as db:
+        db.execute(f'''
+            CREATE TABLE IF NOT EXISTS Tops (
+                timestamp INT PRIMARY KEY,
+                mapUid    VARCHAR(27),
+                score1    INT,
+                score2    INT,
+                score3    INT,
+                score4    INT,
+                score5    INT,
+                account1  TEXT,
+                account2  TEXT,
+                account3  TEXT,
+                account4  TEXT,
+                account5  TEXT
+            );
+        ''')
+
+        db.execute(f'''
+            INSERT INTO Tops (
+                timestamp,
+                mapUid,
+                score1,
+                score2,
+                score3,
+                score4,
+                score5,
+                account1,
+                account2,
+                account3,
+                account4,
+                account5
+            ) VALUES (
+                "{stamp()}",
+                "{uid}",
+                "{tops[0]['score']}",
+                "{tops[1]['score']}",
+                "{tops[2]['score']}",
+                "{tops[3]['score']}",
+                "{tops[4]['score']}",
+                "{tops[0]['accountId']}",
+                "{tops[1]['accountId']}",
+                "{tops[2]['accountId']}",
+                "{tops[3]['accountId']}",
+                "{tops[4]['accountId']}"
+            )
+        ''')
+
+    return tops[0]['score']
 
 
 @safelogged(str, True)
 def read_db_key_val(key: str) -> str:
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-        return cur.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
+    with Cursor(FILE_DB) as db:
+        return db.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
 
 
 @safelogged(list)
 def read_table(table: str) -> list[dict]:
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        return [dict(item) for item in cur.execute(f'SELECT * FROM {table}').fetchall()]
+    with Cursor(FILE_DB) as db:
+        return [dict(item) for item in db.execute(f'SELECT * FROM {table}').fetchall()]
 
 
 @safelogged()
@@ -48,9 +124,7 @@ def warriors_to_json() -> None:
 
 @safelogged()
 def write_db_key_val(key: str, val) -> None:
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-        cur.execute('BEGIN')
-        cur.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
-        cur.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
-        cur.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{stamp()}")')
+    with Cursor(FILE_DB) as db:
+        db.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
+        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
+        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{stamp()}")')

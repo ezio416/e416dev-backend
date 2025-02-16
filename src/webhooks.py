@@ -1,10 +1,11 @@
 # c 2025-01-27
-# m 2025-02-02
+# m 2025-02-15
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
 from api import get_account_name
 from errors import safelogged
+from files import Cursor
 from utils import *
 
 
@@ -42,18 +43,15 @@ def execute_warrior(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> 
     embed.add_embed_field('Times', embed_str, False)
 
     webhook.add_embed(embed)
-    time.sleep(DISCORD_WAIT_TIME)
-    webhook.execute()
+    # time.sleep(DISCORD_WAIT_TIME)
+    # webhook.execute()
+    pass
 
 
 @safelogged(bool)
 def webhook_royal(tokens: dict) -> bool:  # still need to check if map is new
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        map: dict = dict(cur.execute('SELECT * FROM Royal ORDER BY number DESC').fetchone())
+    with Cursor(FILE_DB) as db:
+        map: dict = dict(db.execute('SELECT * FROM Royal ORDER BY number DESC').fetchone())
 
     if not (account_name := get_account_name(tokens, map['author'])):
         raise ValueError(f'no account name for {map['author']}')
@@ -76,12 +74,8 @@ def webhook_royal(tokens: dict) -> bool:  # still need to check if map is new
 def webhook_seasonal() -> bool:
     maps: list[dict] = []
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in cur.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
             maps.append(dict(entry))
 
     for map in maps:
@@ -102,12 +96,8 @@ def webhook_seasonal() -> bool:
 def webhook_seasonal_warriors() -> bool:
     maps: list[dict] = []
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in cur.execute('SELECT * FROM WarriorSeasonal ORDER BY campaignId DESC, name ASC;').fetchmany(25):
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute('SELECT * FROM WarriorSeasonal ORDER BY campaignId DESC, name ASC;').fetchmany(25):
             maps.append(dict(entry))
 
     for map in maps:
@@ -126,12 +116,8 @@ def webhook_seasonal_warriors() -> bool:
 
 @safelogged(bool)
 def webhook_totd(tokens: dict) -> bool:
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-        cur.execute('BEGIN')
-
-        map: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
+    with Cursor(FILE_DB) as db:
+        map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
     if not (account_name := get_account_name(tokens, map['author'])):
         raise ValueError(f'no account name for {map['author']}')
@@ -152,12 +138,8 @@ def webhook_totd(tokens: dict) -> bool:
 
 @safelogged(bool)
 def webhook_totd_warrior() -> bool:
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-        cur.execute('BEGIN')
-
-        map: dict = dict(cur.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
+    with Cursor(FILE_DB) as db:
+        map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
 
     execute_warrior(
         DiscordWebhook(os.environ['dcwh-tm-warrior-updates']),
@@ -176,12 +158,8 @@ def webhook_totd_warrior() -> bool:
 def webhook_weekly(tokens: dict) -> bool:
     maps: list[dict] = []
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in cur.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(5):
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(5):
             maps.append(dict(entry))
 
     for map in maps:
@@ -206,12 +184,8 @@ def webhook_weekly(tokens: dict) -> bool:
 def webhook_weekly_warriors() -> bool:
     maps: list[dict] = []
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in reversed(cur.execute('SELECT * FROM WarriorWeekly ORDER BY number DESC').fetchmany(5)):
+    with Cursor(FILE_DB) as db:
+        for entry in reversed(db.execute('SELECT * FROM WarriorWeekly ORDER BY number DESC').fetchmany(5)):
             maps.append(dict(entry))
 
     for map in maps:

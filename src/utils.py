@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-15
+# m 2025-02-16
 
 from datetime import datetime as dt
 import json
@@ -73,7 +73,7 @@ def log(msg: str, print_term: bool = True) -> None:
         print(text)
 
     with open(FILE_LOG, 'a', newline='\n') as f:
-        f.write(f'{text}\n')
+        f.write(f'{text.encode('unicode-escape').decode('ascii')}\n')
 
 
 def now(brackets: bool = True) -> str:

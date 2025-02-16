@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-16
 
 import zipfile
 
@@ -7,7 +7,7 @@ from nadeo_api import live
 
 from api import get_map_infos
 from errors import safelogged
-from files import read_db_key_val, write_db_key_val
+from files import *
 from utils import *
 
 
@@ -25,12 +25,9 @@ def schedule_royal_maps(tokens: dict) -> bool:
         json.dump(maps_royal, f, indent=4)
         f.write('\n')
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        cur.execute('DROP TABLE IF EXISTS Royal')
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute('DROP TABLE IF EXISTS Royal')
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS Royal (
                 author          CHAR(36),
                 authorTime      INT,
@@ -70,7 +67,7 @@ def schedule_royal_maps(tokens: dict) -> bool:
                     mapUids.add(mapUid)
 
                 number += 1
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO Royal (
                         campaignId,
                         mapUid,
@@ -112,12 +109,9 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
         json.dump(maps_seasonal, f, indent=4)
         f.write('\n')
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        cur.execute('DROP TABLE IF EXISTS Seasonal')
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute('DROP TABLE IF EXISTS Seasonal')
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS Seasonal (
                 author               CHAR(36),
                 authorTime           INT,
@@ -147,7 +141,7 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
             timestampRankingSent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO Seasonal (
                         campaignId,
                         campaignIndex,
@@ -177,8 +171,8 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
                     )
                 ''')
 
+    write_db_key_val('warrior_seasonal', int(read_db_key_val('next_seasonal')) + 60*60*24*14)
     write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
-    write_db_key_val('warrior_seasonal', maps_seasonal['nextRequestTimestamp'] + 60*60*24*14)
     return True
 
 
@@ -186,12 +180,8 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
 def schedule_seasonal_warriors(tokens: dict) -> bool:
     maps: dict = {}
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in cur.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
             map = dict(entry)
             maps[map['mapUid']] = map
 
@@ -204,14 +194,11 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
             f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
         )
 
-        maps[uid]['worldRecord'] = req['tops'][0]['top'][0]['score']
+        maps[uid]['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
         maps[uid]['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'])
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorSeasonal (
                 authorTime  INT,
                 campaignId  INT,
@@ -225,7 +212,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
         ''')
 
         for uid, map in maps.items():
-            cur.execute(f'''
+            db.execute(f'''
                 INSERT INTO WarriorSeasonal (
                     authorTime,
                     campaignId,
@@ -264,12 +251,9 @@ def schedule_totd_maps(tokens: dict) -> bool:
         json.dump(maps_totd, f, indent=4)
         f.write('\n')
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        cur.execute('DROP TABLE IF EXISTS Totd')
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute('DROP TABLE IF EXISTS Totd')
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS Totd (
                 author          CHAR(36),
                 authorTime      INT,
@@ -302,7 +286,7 @@ def schedule_totd_maps(tokens: dict) -> bool:
                     break
 
                 number += 1
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO Totd (
                         campaignId,
                         mapUid,
@@ -328,19 +312,15 @@ def schedule_totd_maps(tokens: dict) -> bool:
                     )
                 ''')
 
+    write_db_key_val('warrior_totd', int(read_db_key_val('next_totd')) + 60*60*2)
     write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
-    write_db_key_val('warrior_totd', maps_totd['nextRequestTimestamp'] + 60*60*2)
     return True
 
 
 @safelogged(bool)
 def schedule_totd_warrior(tokens: dict) -> bool:
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        map: dict = dict(cur.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
+    with Cursor(FILE_DB) as db:
+        map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
     log(f'info: getting records for TOTD {map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}')
 
@@ -350,15 +330,11 @@ def schedule_totd_warrior(tokens: dict) -> bool:
         f'api/token/leaderboard/group/Personal_Best/map/{map['mapUid']}/top'
     )
 
-    map['worldRecord'] = req['tops'][0]['top'][0]['score']
+    map['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
     map['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorTotd (
                 authorTime  INT,
                 custom      INT,
@@ -371,7 +347,7 @@ def schedule_totd_warrior(tokens: dict) -> bool:
             );
         ''')
 
-        cur.execute(f'''
+        db.execute(f'''
             INSERT INTO WarriorTotd (
                 authorTime,
                 custom,
@@ -410,12 +386,9 @@ def schedule_weekly_maps(tokens: dict) -> bool:
         json.dump(maps_weekly, f, indent=4)
         f.write('\n')
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        cur.execute('DROP TABLE IF EXISTS Weekly')
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute('DROP TABLE IF EXISTS Weekly')
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS Weekly (
                 author               CHAR(36),
                 authorTime           INT,
@@ -444,7 +417,7 @@ def schedule_weekly_maps(tokens: dict) -> bool:
             timestampRankingSent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO Weekly (
                         campaignId,
                         mapIndex,
@@ -472,8 +445,8 @@ def schedule_weekly_maps(tokens: dict) -> bool:
                     )
                 ''')
 
+    write_db_key_val('warrior_weekly', 0)
     write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
-    write_db_key_val('warrior_weekly', maps_weekly['nextRequestTimestamp'] + 0)
     return True
 
 
@@ -481,12 +454,8 @@ def schedule_weekly_maps(tokens: dict) -> bool:
 def schedule_weekly_warriors(tokens: dict) -> bool:
     maps: dict = {}
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in cur.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(10)[5:]:
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(10)[5:]:
             map = dict(entry)
             maps[map['mapUid']] = map
 
@@ -499,14 +468,11 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
             f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
         )
 
-        maps[uid]['worldRecord'] = req['tops'][0]['top'][0]['score']
+        maps[uid]['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
         maps[uid]['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'], 0.5)
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        cur.execute(f'''
+    with Cursor(FILE_DB) as db:
+        db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorWeekly (
                 authorTime  INT,
                 custom      INT,
@@ -520,7 +486,7 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
         ''')
 
         for uid, map in maps.items():
-            cur.execute(f'''
+            db.execute(f'''
                 INSERT INTO WarriorWeekly (
                     authorTime,
                     custom,

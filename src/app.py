@@ -20,7 +20,7 @@ def main() -> None:
             schedule(tokens, 'next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),
             schedule(tokens, 'next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd),
             schedule(tokens, 'next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly),
-            schedule(tokens, 'next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
+            # schedule(tokens, 'next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
         )):
             tables_to_json()
             to_github()

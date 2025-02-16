@@ -1,6 +1,8 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-16
 
+from datetime import timezone
+from files import Cursor, read_table
 from utils import *
 
 
@@ -20,26 +22,26 @@ def display_db_epoch_vals():
             f'{dt.fromtimestamp(int(val), timezone.utc).strftime('%Y-%m-%d %H:%M:%Sz')}',
             f'({'in ' if diff > 0 else ''}{format_long_time(abs(diff))}{' ago' if diff <= 0 else ''})'
         )
+
+
+def migrate_old_warriors():
+    with Cursor('C:/Users/Ezio/Code/e416dev_api/tm.db') as db:
         camp: list[dict] = []
-        for entry in cur.execute('SELECT * FROM CampaignWarriors').fetchall():
+        for entry in db.execute('SELECT * FROM CampaignWarriors').fetchall():
             camp.append(dict(entry))
 
         other: list[dict] = []
-        for entry in cur.execute('SELECT * FROM OtherWarriors').fetchall():
+        for entry in db.execute('SELECT * FROM OtherWarriors').fetchall():
             other.append(dict(entry))
 
         totd: list[dict] = []
-        for entry in cur.execute('SELECT * FROM TotdWarriors').fetchall():
+        for entry in db.execute('SELECT * FROM TotdWarriors').fetchall():
             totd.append(dict(entry))
 
     def migrate_seasonal() -> None:
-        with sql.connect(FILE_DB) as con:
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-
-            cur.execute('DROP TABLE IF EXISTS WarriorSeasonal')
-            cur.execute(f'''
+        with Cursor(FILE_DB) as db:
+            db.execute('DROP TABLE IF EXISTS WarriorSeasonal')
+            db.execute(f'''
                 CREATE TABLE IF NOT EXISTS WarriorSeasonal (
                     authorTime  INT,
                     campaignId  INT,
@@ -53,7 +55,7 @@ def display_db_epoch_vals():
             ''')
 
             for map in camp:
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO WarriorSeasonal (
                         authorTime,
                         campaignId,
@@ -76,13 +78,9 @@ def display_db_epoch_vals():
                 ''')
 
     def migrate_other() -> None:
-        with sql.connect(FILE_DB) as con:
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-
-            cur.execute('DROP TABLE IF EXISTS WarriorOther')
-            cur.execute(f'''
+        with Cursor(FILE_DB) as db:
+            db.execute('DROP TABLE IF EXISTS WarriorOther')
+            db.execute(f'''
                 CREATE TABLE IF NOT EXISTS WarriorOther (
                     authorTime   INT,
                     campaignId   INT,
@@ -100,7 +98,7 @@ def display_db_epoch_vals():
             ''')
 
             for map in other:
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO WarriorOther (
                         authorTime,
                         campaignId,
@@ -131,13 +129,9 @@ def display_db_epoch_vals():
                 ''')
 
     def migrate_totd() -> None:
-        with sql.connect(FILE_DB) as con:
-            cur: sql.Cursor = con.cursor()
-
-            cur.execute('BEGIN')
-
-            cur.execute('DROP TABLE IF EXISTS WarriorTotd')
-            cur.execute(f'''
+        with Cursor(FILE_DB) as db:
+            db.execute('DROP TABLE IF EXISTS WarriorTotd')
+            db.execute(f'''
                 CREATE TABLE IF NOT EXISTS WarriorTotd (
                     authorTime  INT,
                     custom      INT,
@@ -151,7 +145,7 @@ def display_db_epoch_vals():
             ''')
 
             for map in totd:
-                cur.execute(f'''
+                db.execute(f'''
                     INSERT INTO WarriorTotd (
                         authorTime,
                         custom,
@@ -180,6 +174,19 @@ def display_db_epoch_vals():
     pass
 
 
+def test_unicode_encode_error():
+    s = 'Ma\u0142opolskie'
+    with open('locals.txt', 'a', newline='\n') as f:
+        f.write(f'{s.encode('unicode-escape').decode('ascii')}\n')
+
+    log(s)
+    # with open('locals.txt', 'ab') as f:
+    #     f.write(s.encode())
+
+
 if __name__ == '__main__':
+    # display_db_epoch_vals()
     # migrate_old_warriors()
+    # test_unicode_encode_error()
+
     pass

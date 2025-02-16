@@ -1,9 +1,10 @@
 # c 2025-01-27
-# m 2025-01-27
+# m 2025-02-15
 
 from nadeo_api import auth, core, oauth
 
 from errors import safelogged
+from files import Cursor
 from utils import *
 
 
@@ -53,12 +54,8 @@ def get_map_infos(tokens: dict, table: str) -> bool:
     uid_groups:  list = []
     uids:        list = []
 
-    with sql.connect(FILE_DB) as con:
-        con.row_factory = sql.Row
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
-        for entry in cur.execute(f'SELECT * FROM {table}').fetchall():
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute(f'SELECT * FROM {table}').fetchall():
             map: dict = dict(entry)
             maps_by_uid[map['mapUid']] = map
 
@@ -90,12 +87,9 @@ def get_map_infos(tokens: dict, table: str) -> bool:
             map['submitter']       = entry['submitter']
             map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
 
-    with sql.connect(FILE_DB) as con:
-        cur: sql.Cursor = con.cursor()
-
-        cur.execute('BEGIN')
+    with Cursor(FILE_DB) as db:
         for uid, map in maps_by_uid.items():
-            cur.execute(f'''
+            db.execute(f'''
                 UPDATE {table}
                 SET author          = "{map['author']}",
                     authorTime      = "{map['authorTime']}",
