@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-16
+# m 2025-02-17
 
 from datetime import datetime as dt
 import json
@@ -10,6 +10,25 @@ import time
 from pytz import timezone as tz
 
 from globals import *
+
+
+def calc_warrior_time(author_time: int, world_record: int, factor: float | None = 0.25) -> int:
+    '''
+    - `factor` is offset from AT
+        - between `0.0` and `1.0`
+        - examples, given AT is `10.000` and WR is `8.000`:
+            - `0.000` - AT (`10.000`)
+            - `0.125` - 1/8 of the way between AT and WR (`9.750`) (default for TOTD)
+            - `0.250` - 1/4 of the way between AT and WR (`9.500`) (default, default for seasonal)
+            - `0.500` - 1/2 of the way between AT and WR (`9.000`) (default for weekly shorts)
+            - `0.750` - 3/4 of the way between AT and WR (`8.500`)
+            - `1.000` - WR (`8.000`)
+    '''
+
+    return author_time - max(
+        int((author_time - world_record) * (factor if factor is not None else 0.25)),
+        1
+    )
 
 
 def format_long_time(input_s: int):
@@ -45,25 +64,6 @@ def format_race_time(input_ms: int) -> str:
     ms:  int = input_ms % 1000
 
     return f'{min}:{str(sec).zfill(2)}.{str(ms).zfill(3)}'
-
-
-def get_warrior_time(author_time: int, world_record: int, factor: float | None = 0.25) -> int:
-    '''
-    - `factor` is offset from AT
-        - between `0.0` and `1.0`
-        - examples, given AT is `10.000` and WR is `8.000`:
-            - `0.000` - AT (`10.000`)
-            - `0.125` - 1/8 of the way between AT and WR (`9.750`) (default for TOTD)
-            - `0.250` - 1/4 of the way between AT and WR (`9.500`) (default, default for seasonal)
-            - `0.500` - 1/2 of the way between AT and WR (`9.000`) (default for weekly)
-            - `0.750` - 3/4 of the way between AT and WR (`8.500`)
-            - `1.000` - WR (`8.000`)
-    '''
-
-    return author_time - max(
-        int((author_time - world_record) * (factor if factor is not None else 0.25)),
-        1
-    )
 
 
 def log(msg: str, print_term: bool = True) -> None:

@@ -1,4 +1,5 @@
 discord-webhook
+flask
 nadeo-api
 pytz
 requests

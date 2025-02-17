@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-16
+# m 2025-02-17
 
 import zipfile
 
@@ -195,7 +195,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
         )
 
         maps[uid]['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
-        maps[uid]['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'])
+        maps[uid]['warriorTime'] = calc_warrior_time(map['authorTime'], map['worldRecord'])
 
     with Cursor(FILE_DB) as db:
         db.execute(f'''
@@ -331,7 +331,7 @@ def schedule_totd_warrior(tokens: dict) -> bool:
     )
 
     map['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
-    map['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
+    map['warriorTime'] = calc_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
 
     with Cursor(FILE_DB) as db:
         db.execute(f'''
@@ -469,7 +469,7 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
         )
 
         maps[uid]['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
-        maps[uid]['warriorTime'] = get_warrior_time(map['authorTime'], map['worldRecord'], 0.5)
+        maps[uid]['warriorTime'] = calc_warrior_time(map['authorTime'], map['worldRecord'], 0.5)
 
     with Cursor(FILE_DB) as db:
         db.execute(f'''
