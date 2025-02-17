@@ -1,20 +1,23 @@
 # c 2024-12-26
-# m 2024-01-27
+# m 2024-02-17
+
+from multiprocessing import Process
 
 from api import get_tokens
+from api_provider import provider
 from files import tables_to_json, warriors_to_json
 from github import to_github
 from schedules import *
 from webhooks import *
 
 
-def main() -> None:
-    tokens: dict = get_tokens()
+def backend() -> None:
+    tokens = get_tokens()
 
     while True:
         time.sleep(1)
-        print(f'{now()} loop')
-        ts: int = stamp()
+        ts = stamp()
+        log('loop', log_file=False)
 
         if any((
             schedule(tokens, 'next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),
@@ -35,4 +38,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    Process(target=backend).start()
+    provider.run('0.0.0.0', 4161)

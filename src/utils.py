@@ -31,7 +31,7 @@ def calc_warrior_time(author_time: int, world_record: int, factor: float | None 
     )
 
 
-def format_long_time(input_s: int):
+def format_long_time(input_s: int) -> str:
     sec = int(input_s)
 
     week = int(sec / 604_800)
@@ -66,14 +66,15 @@ def format_race_time(input_ms: int) -> str:
     return f'{min}:{str(sec).zfill(2)}.{str(ms).zfill(3)}'
 
 
-def log(msg: str, print_term: bool = True) -> None:
-    text: str = f'{now()} {msg}'
+def log(msg: str, print_term: bool = True, log_file: bool = True) -> None:
+    text = f'{now()} {msg}'
 
     if print_term:
-        print(text)
+        print(text, end='\r' if text.endswith(')] loop') else '\n')
 
-    with open(FILE_LOG, 'a', newline='\n') as f:
-        f.write(f'{text.encode('unicode-escape').decode('ascii')}\n')
+    if log_file:
+        with open(FILE_LOG, 'a', newline='\n') as f:
+            f.write(f'{text.encode('unicode-escape').decode('ascii')}\n')
 
 
 def now(brackets: bool = True) -> str:

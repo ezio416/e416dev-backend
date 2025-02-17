@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-14
+# m 2025-02-17
 
 import json
 import traceback as tb
@@ -9,8 +9,8 @@ from discord_webhook import DiscordWebhook
 from utils import *
 
 
-def error(e: Exception, silent: bool = False):
-    def clear_builtins(locals: dict[str, str]):
+def error(e: Exception, silent: bool = False) -> None:
+    def clear_builtins(locals: dict[str, str]) -> None | dict[str, str]:
         if not locals:
             return
 

@@ -1,7 +1,8 @@
 # c 2025-01-27
-# m 2025-02-16
+# m 2025-02-17
 
 from errors import safelogged
+from files import Cursor
 from types import TracebackType
 from utils import *
 
@@ -11,17 +12,17 @@ class Cursor:
     Context manager for a database connection and cursor
     '''
 
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = path
 
-    def __enter__(self):
+    def __enter__(self) -> Cursor:
         self.con = sql.connect(self.path)
         self.con.row_factory = sql.Row
         self.cur = self.con.cursor()
         self.cur.execute('BEGIN')
         return self.cur
 
-    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: TracebackType):
+    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: TracebackType) -> None:
         self.cur.close()
 
         if exc_type is exc_val is exc_tb is None:

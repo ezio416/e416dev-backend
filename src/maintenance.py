@@ -1,12 +1,12 @@
 # c 2025-01-27
-# m 2025-02-16
+# m 2025-02-17
 
 from datetime import timezone
 from files import Cursor, read_table
 from utils import *
 
 
-def display_db_epoch_vals():
+def display_db_epoch_vals() -> None:
     table = read_table('KeyVals')
 
     stage2 = []
@@ -24,7 +24,7 @@ def display_db_epoch_vals():
         )
 
 
-def migrate_old_warriors():
+def migrate_old_warriors() -> None:
     with Cursor('C:/Users/Ezio/Code/e416dev_api/tm.db') as db:
         camp: list[dict] = []
         for entry in db.execute('SELECT * FROM CampaignWarriors').fetchall():
@@ -174,7 +174,7 @@ def migrate_old_warriors():
     pass
 
 
-def test_unicode_encode_error():
+def test_unicode_encode_error() -> None:
     s = 'Ma\u0142opolskie'
     with open('locals.txt', 'a', newline='\n') as f:
         f.write(f'{s.encode('unicode-escape').decode('ascii')}\n')
