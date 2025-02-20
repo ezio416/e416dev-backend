@@ -1,7 +1,9 @@
 # c 2025-01-27
-# m 2025-02-02
+# m 2025-02-20
 
+import json
 import os
+import sqlite3 as sql
 
 
 CAMPAIGN_SERIES:   tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
@@ -25,6 +27,7 @@ FILE_SEASONAL_RAW: str = f'{DIR_DATA}/seasonal_raw.json'
 FILE_TOTD:         str = f'{DIR_DATA}/totd.json'
 FILE_TOTD_RAW:     str = f'{DIR_DATA}/totd_raw.json'
 FILE_WARRIOR:      str = f'{DIR_DATA}/warrior.json'
+FILE_WARRIOR_OLD:  str = f'{DIR_DATA}/warrior_old.json'
 FILE_WEEKLY:       str = f'{DIR_DATA}/weekly.json'
 FILE_WEEKLY_RAW:   str = f'{DIR_DATA}/weekly_raw.json'
 FILE_ZONE:         str = f'{DIR_DATA}/zone.json'

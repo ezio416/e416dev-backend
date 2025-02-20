@@ -1,10 +1,8 @@
 # c 2025-01-27
-# m 2025-02-17
+# m 2025-02-20
 
 from datetime import datetime as dt
-import json
 import re
-import sqlite3 as sql
 import time
 
 from pytz import timezone as tz
@@ -18,9 +16,9 @@ def calc_warrior_time(author_time: int, world_record: int, factor: float | None 
         - between `0.0` and `1.0`
         - examples, given AT is `10.000` and WR is `8.000`:
             - `0.000` - AT (`10.000`)
-            - `0.125` - 1/8 of the way between AT and WR (`9.750`) (default for TOTD)
-            - `0.250` - 1/4 of the way between AT and WR (`9.500`) (default, default for seasonal)
-            - `0.500` - 1/2 of the way between AT and WR (`9.000`) (default for weekly shorts)
+            - `0.125` - 1/8 of the way between AT and WR (`9.750`) (tracks of the day)
+            - `0.250` - 1/4 of the way between AT and WR (`9.500`) (seasonal campaigns)
+            - `0.500` - 1/2 of the way between AT and WR (`9.000`) (weekly shorts/club campaigns)
             - `0.750` - 3/4 of the way between AT and WR (`8.500`)
             - `1.000` - WR (`8.000`)
     '''

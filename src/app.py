@@ -1,12 +1,12 @@
 # c 2024-12-26
-# m 2024-02-17
+# m 2024-02-20
 
 from multiprocessing import Process
 
 from api import get_tokens
 from api_provider import provider
 from files import tables_to_json, warriors_to_json
-from github import to_github
+from github import *
 from schedules import *
 from webhooks import *
 
@@ -35,6 +35,8 @@ def backend() -> None:
         )):
             warriors_to_json()
             to_github()
+            warriors_to_old_json()  # remove once 1.6 has 1k downloads?
+            to_github_old()
 
 
 if __name__ == '__main__':

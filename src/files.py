@@ -1,8 +1,7 @@
 # c 2025-01-27
-# m 2025-02-17
+# m 2025-02-20
 
 from errors import safelogged
-from files import Cursor
 from types import TracebackType
 from utils import *
 
@@ -15,7 +14,7 @@ class Cursor:
     def __init__(self, path: str) -> None:
         self.path = path
 
-    def __enter__(self) -> Cursor:
+    def __enter__(self):
         self.con = sql.connect(self.path)
         self.con.row_factory = sql.Row
         self.cur = self.con.cursor()
@@ -113,12 +112,34 @@ def tables_to_json() -> None:
 
 @safelogged()
 def warriors_to_json() -> None:
-    warriors: dict[str, dict] = {}
+    warriors = {}
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
 
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
+        json.dump(warriors, f, indent=4)
+        f.write('\n')
+
+
+@safelogged()
+def warriors_to_old_json() -> None:
+    warriors = {}
+
+    for table_type in ('Seasonal', 'Totd', 'Other'):
+        for map in read_table(f'Warrior{table_type}'):
+            map['uid'] = map['mapUid']
+            map.pop('mapUid')
+
+            if table_type == 'Seasonal':
+                map['clubId'] = 0
+            elif table_type == 'Other':
+                map['campaignIndex'] = map['mapIndex']
+                map.pop('mapIndex')
+
+            warriors[map['uid']] = dict(sorted(map.items()))
+
+    with open(FILE_WARRIOR_OLD, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
         f.write('\n')
 

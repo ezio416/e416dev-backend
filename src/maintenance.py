@@ -1,8 +1,9 @@
 # c 2025-01-27
-# m 2025-02-17
+# m 2025-02-20
 
 from datetime import timezone
-from files import Cursor, read_table
+from files import *
+from github import *
 from utils import *
 
 
@@ -184,9 +185,17 @@ def test_unicode_encode_error() -> None:
     #     f.write(s.encode())
 
 
+def warriors_to_github() -> None:
+    warriors_to_json()
+    to_github()
+    warriors_to_old_json()
+    to_github_old()
+
+
 if __name__ == '__main__':
-    # display_db_epoch_vals()
+    display_db_epoch_vals()
     # migrate_old_warriors()
     # test_unicode_encode_error()
+    # warriors_to_github()
 
     pass
