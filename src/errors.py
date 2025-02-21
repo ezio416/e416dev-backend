@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-17
+# m 2025-02-21
 
 import json
 import traceback as tb
@@ -57,7 +57,7 @@ def error(e: Exception, silent: bool = False) -> None:
             '\n'.join(root_stack)}\n{'\n'.join(tb_stack[1:-1])}````{tb_stack[-1]}`'
 
         webhook = DiscordWebhook(
-            os.environ['dcwh-site-backend-errors'],
+            os.environ['DCWH_SITE_BACKEND_ERRORS'],
             content=content
         )
         webhook.add_file(local_data, 'locals.json')

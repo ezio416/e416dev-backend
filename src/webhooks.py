@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-15
+# m 2025-02-21
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
@@ -57,7 +57,7 @@ def webhook_royal(tokens: dict) -> bool:  # still need to check if map is new
         raise ValueError(f'no account name for {map['author']}')
 
     execute_schedule(
-        DiscordWebhook(os.environ['dcwh-tm-royal-updates']),
+        DiscordWebhook(os.environ['DCWH_TM_ROYAL_UPDATES']),
         DiscordEmbed(
             f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
             f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
@@ -80,7 +80,7 @@ def webhook_seasonal() -> bool:
 
     for map in maps:
         execute_schedule(
-            DiscordWebhook(os.environ['dcwh-tm-seasonal-updates']),
+            DiscordWebhook(os.environ['DCWH_TM_SEASONAL_UPDATES']),
             DiscordEmbed(
                 strip_format_codes(map['name']),
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
@@ -102,7 +102,7 @@ def webhook_seasonal_warriors() -> bool:
 
     for map in maps:
         execute_warrior(
-            DiscordWebhook(os.environ['dcwh-tm-warrior-updates']),
+            DiscordWebhook(os.environ['DCWH_TM_WARRIOR_UPDATES']),
             DiscordEmbed(
                 f'{map['name']}',
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
@@ -123,7 +123,7 @@ def webhook_totd(tokens: dict) -> bool:
         raise ValueError(f'no account name for {map['author']}')
 
     execute_schedule(
-        DiscordWebhook(os.environ['dcwh-tm-totd-updates']),
+        DiscordWebhook(os.environ['DCWH_TM_TOTD_UPDATES']),
         DiscordEmbed(
             f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
             f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
@@ -142,7 +142,7 @@ def webhook_totd_warrior() -> bool:
         map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
 
     execute_warrior(
-        DiscordWebhook(os.environ['dcwh-tm-warrior-updates']),
+        DiscordWebhook(os.environ['DCWH_TM_WARRIOR_UPDATES']),
         DiscordEmbed(
             f'Track of the Day {map['date']}',
             f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
@@ -167,7 +167,7 @@ def webhook_weekly(tokens: dict) -> bool:
             raise ValueError(f'no account name for {map['author']}')
 
         execute_schedule(
-            DiscordWebhook(os.environ['dcwh-tm-weekly-updates']),
+            DiscordWebhook(os.environ['DCWH_TM_WEEKLY_UPDATES']),
             DiscordEmbed(
                 f'Week {map['week']}, Map {map['number']}',
                 f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
@@ -190,7 +190,7 @@ def webhook_weekly_warriors() -> bool:
 
     for map in maps:
         execute_warrior(
-            DiscordWebhook(os.environ['dcwh-tm-warrior-updates']),
+            DiscordWebhook(os.environ['DCWH_TM_WARRIOR_UPDATES']),
             DiscordEmbed(
                 f'Weekly Short #{map['number']}',
                 f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
