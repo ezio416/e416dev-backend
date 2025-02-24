@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-02-17
+# m 2025-02-23
 
 from flask import Flask, request, Response
 
@@ -10,6 +10,7 @@ from utils import *
 provider = Flask(__name__)
 
 
+@provider.route('/tm/calc_warrior_time')
 @provider.route('/tm/calc_warrior_time/')
 def tm_calc_warrior_time():
     at = request.args.get('at', None, int)
@@ -22,6 +23,7 @@ def tm_calc_warrior_time():
     return [0]
 
 
+@provider.route('/tm/get_warrior_time')
 @provider.route('/tm/get_warrior_time/')
 def tm_get_warrior_time():
     uid = request.args.get('uid', None, str)
