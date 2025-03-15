@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2024-02-20
+# m 2024-03-14
 
 from multiprocessing import Process
 
@@ -35,8 +35,6 @@ def backend() -> None:
         )):
             warriors_to_json()
             to_github()
-            warriors_to_old_json()  # remove once 1.6 has 1k downloads?
-            to_github_old()
 
 
 if __name__ == '__main__':

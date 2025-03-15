@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-20
+# m 2025-03-02
 
 from datetime import datetime as dt
 import re
@@ -87,4 +87,4 @@ def stamp() -> int:
 
 
 def strip_format_codes(raw: str) -> str:
-    return re.sub(r'\$([0-9a-fA-F]{1,3}|[iIoOnNmMwWsSzZtTgG<>]|[lLhHpP](\[[^\]]+\])?)', '', raw).strip()
+    return re.sub(r'\$([0-9a-f]{1,3}|[gimnostuwz<>]|[hlp](\[[^\]]+\])?)', '', raw, flags=re.IGNORECASE).strip()
