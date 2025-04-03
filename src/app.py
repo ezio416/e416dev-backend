@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-03-14
+# m 2025-04-03
 
 from multiprocessing import Process
 import time
@@ -22,6 +22,7 @@ def backend() -> None:
 
         for audience, token in tokens.items():  # bandaid
             if audience != 'OAuth2' and time.time() + (15 * 60) > token.expiration:
+                log(f'{audience} token is 15 minutes to expiry')
                 token.refresh()
 
         if any((
