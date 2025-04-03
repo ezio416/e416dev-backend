@@ -216,5 +216,6 @@ if __name__ == '__main__':
     # to_github_old()
     # test_club_campaign_error()
     # print(webhook_seasonal(None))
+    # print(calc_warrior_time(52382, 51255, 0.125))
 
     pass
