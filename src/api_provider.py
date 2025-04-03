@@ -46,4 +46,4 @@ def tm_get_warrior_time():
 
 
 if __name__ == '__main__':
-    provider.run('0.0.0.0', 4161, True)
+    provider.run('127.0.0.1', 4161, True)
