@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-15
+# m 2025-04-02
 
 from nadeo_api import auth, core, oauth
 
@@ -107,7 +107,29 @@ def get_map_infos(tokens: dict, table: str) -> bool:
     return True
 
 
-def get_token_oauth() -> auth.Token:  # workaround for oauth refreshing
+def get_token_core() -> auth.Token:
+    log('info: getting core token')
+    return auth.get_token(
+        auth.audience_core,
+        os.environ['TM_E416DEV_SERVER_USERNAME'],
+        os.environ['TM_E416DEV_SERVER_PASSWORD'],
+        os.environ['TM_E416DEV_AGENT'],
+        True
+    )
+
+
+def get_token_live() -> auth.Token:
+    log('info: getting live token')
+    return auth.get_token(
+        auth.audience_live,
+        os.environ['TM_E416DEV_SERVER_USERNAME'],
+        os.environ['TM_E416DEV_SERVER_PASSWORD'],
+        os.environ['TM_E416DEV_AGENT'],
+        True
+    )
+
+
+def get_token_oauth() -> auth.Token:
     log('info: getting oauth token')
     return auth.get_token(
         auth.audience_oauth,
@@ -117,26 +139,8 @@ def get_token_oauth() -> auth.Token:  # workaround for oauth refreshing
 
 
 def get_tokens() -> dict:
-    log('info: getting core token')
-    token_core: auth.Token = auth.get_token(
-        auth.audience_core,
-        os.environ['TM_E416DEV_SERVER_USERNAME'],
-        os.environ['TM_E416DEV_SERVER_PASSWORD'],
-        os.environ['TM_E416DEV_AGENT'],
-        True
-    )
-
-    log('info: getting live token')
-    token_live: auth.Token = auth.get_token(
-        auth.audience_live,
-        os.environ['TM_E416DEV_SERVER_USERNAME'],
-        os.environ['TM_E416DEV_SERVER_PASSWORD'],
-        os.environ['TM_E416DEV_AGENT'],
-        True
-    )
-
     return {
-        'core': token_core,
-        'live': token_live,
+        'core': get_token_core(),
+        'live': get_token_live(),
         'oauth': get_token_oauth()
     }

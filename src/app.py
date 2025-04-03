@@ -1,7 +1,8 @@
 # c 2024-12-26
-# m 2024-03-14
+# m 2025-03-14
 
 from multiprocessing import Process
+import time
 
 from api import get_tokens
 from api_provider import provider
@@ -18,6 +19,10 @@ def backend() -> None:
         time.sleep(1)
         ts = stamp()
         log('loop', log_file=False)
+
+        for audience, token in tokens.items():  # bandaid
+            if audience != 'OAuth2' and time.time() + (15 * 60) > token.expiration:
+                token.refresh()
 
         if any((
             schedule(tokens, 'next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),

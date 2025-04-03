@@ -1,10 +1,15 @@
 # c 2025-01-27
-# m 2025-02-20
+# m 2025-04-02
 
 from datetime import timezone
+
+from nadeo_api import live
+
+from api import *
 from files import *
 from github import *
 from utils import *
+from webhooks import *
 
 
 def display_db_epoch_vals() -> None:
@@ -175,6 +180,17 @@ def migrate_old_warriors() -> None:
     pass
 
 
+def test_club_campaign_error() -> None:
+    tokens = get_tokens()
+
+    req = live.get(
+        tokens['live'],
+        'api/token/club/17893/campaign/3348'
+    )
+
+    pass
+
+
 def test_unicode_encode_error() -> None:
     s = 'Ma\u0142opolskie'
     with open('locals.txt', 'a', newline='\n') as f:
@@ -188,14 +204,17 @@ def test_unicode_encode_error() -> None:
 def warriors_to_github() -> None:
     warriors_to_json()
     to_github()
-    warriors_to_old_json()
-    to_github_old()
+    # warriors_to_old_json()
+    # to_github_old()
 
 
 if __name__ == '__main__':
-    display_db_epoch_vals()
+    # display_db_epoch_vals()
     # migrate_old_warriors()
     # test_unicode_encode_error()
     # warriors_to_github()
+    # to_github_old()
+    # test_club_campaign_error()
+    # print(webhook_seasonal(None))
 
     pass

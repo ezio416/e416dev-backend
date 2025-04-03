@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-21
+# m 2025-04-01
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
@@ -71,7 +71,7 @@ def webhook_royal(tokens: dict) -> bool:  # still need to check if map is new
 
 
 @safelogged(bool)
-def webhook_seasonal() -> bool:
+def webhook_seasonal(tokens: dict) -> bool:
     maps: list[dict] = []
 
     with Cursor(FILE_DB) as db:
