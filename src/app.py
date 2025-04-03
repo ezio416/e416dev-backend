@@ -21,7 +21,7 @@ def backend() -> None:
         log('loop', log_file=False)
 
         for audience, token in tokens.items():  # bandaid
-            if audience != 'OAuth2' and time.time() + (15 * 60) > token.expiration:
+            if audience != 'oauth' and time.time() + (15 * 60) > token.expiration:
                 log(f'{audience} token is 15 minutes to expiry')
                 token.refresh()
 
