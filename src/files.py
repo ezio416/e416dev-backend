@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-20
+# m 2025-05-22
 
 from errors import safelogged
 from types import TracebackType
@@ -116,6 +116,9 @@ def warriors_to_json() -> None:
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
+
+        if table == 'Totd':
+            warriors[table] = sorted(warriors[table], key=lambda x: x['date'])
 
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
