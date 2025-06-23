@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-02-17
+# m 2025-06-23
 
 import zipfile
 
@@ -312,8 +312,10 @@ def schedule_totd_maps(tokens: dict) -> bool:
                     )
                 ''')
 
-    write_db_key_val('warrior_totd', int(read_db_key_val('next_totd')) + 60*60*2)
-    write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
+    last_totd: int = int(read_db_key_val('next_totd'))
+    write_db_key_val('warrior_totd', last_totd + 60*60*2)
+    # write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])  # returns -1 as of 2025-06-22
+    write_db_key_val('next_totd', last_totd + 86400)  # will break for daylight savings
     return True
 
 
