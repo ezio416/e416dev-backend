@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-08
+# m 2025-07-15
 
 import csv
 from datetime import timezone
@@ -48,6 +48,38 @@ def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0
                     "{map['id']}"
                 )
             ''')
+
+    pass
+
+
+def add_gold_times_to_warriors() -> None:
+    with Cursor(FILE_DB) as db:
+        # for table_name in 'Seasonal', 'Totd', 'Weekly':
+        #     for entry in db.execute(f'SELECT * FROM {table_name}').fetchall():
+        #         map = dict(entry)
+        #         db.execute(f'UPDATE Warrior{table_name} SET goldTime = {map['goldTime']} WHERE mapUid = "{map['mapUid']}"')
+
+        MAX_UIDS = 291
+        token= get_token_core()
+
+        maps = {}
+        for entry in db.execute(f'SELECT * from WarriorOther').fetchall():
+            map = dict(entry)
+            maps[map['mapUid']] = map
+
+        uids = list(maps)
+        while len(uids):
+            print(f'{len(uids)} maps left')
+
+            uid_count = min(len(uids), MAX_UIDS)
+            uids_this_req = uids[:uid_count]
+            uids = uids[uid_count:]
+            endpoint = f'maps/?mapUidList={','.join(uids_this_req)}'
+
+            time.sleep(0.5)
+            req = core.get(token, endpoint)
+            for map in req:
+                db.execute(f'UPDATE WarriorOther SET goldTime = {map['goldScore']} WHERE mapUid = "{map['mapUid']}"')
 
     pass
 
@@ -311,81 +343,49 @@ def migrate_old_warriors() -> None:
 
 def process_u10s() -> None:
     def load_csv() -> dict:
-        data = {}
+        data = []
 
-        with open('data/u10s.csv') as f:
+        with open('data/u10s_2.csv') as f:
             for i, line in enumerate(csv.reader(f)):
                 if not i:
                     continue
 
-                data[line[1]] = int(float(line[3][3:]) * 1000)
+                data.append(line)
 
         return data
 
     club_id = 18974
-    campaign_ids = (
-        50725,
-        50726,
-        51499,
-        51756,
-        53699,
-        53830,
-        54696,
-        57793,
-        62345,
-        62508,
-        63068,
-        65166,
-        72335,
-        72336,
-        72491,
-        74657,
-        78687,
-        78690,
-        78964,
-        82560
-    )
+    club_name = 'Everios96'
 
-    csv_data = load_csv()
+    maps = load_csv()
 
-    tokens = get_tokens()
-
-    for id in campaign_ids:
-        maps = get_tops_for_club_campaign(tokens, club_id, id)
-
-        print(f'writing db for club {club_id}, campaign {id}')
-
-        with Cursor(FILE_DB) as db:
-            for i, map in enumerate(maps):
-                uid = map['uid']
-
-                db.execute(f'''
-                    INSERT INTO WarriorOther (
-                        authorTime,
-                        campaignId,
-                        campaignName,
-                        clubId,
-                        clubName,
-                        mapIndex,
-                        mapUid,
-                        name,
-                        warriorTime,
-                        worldRecord
-                    ) VALUES (
-                        "{map['at']}",
-                        "{map['campaign_id']}",
-                        "{map['campaign_name']}",
-                        "{map['club_id']}",
-                        "{map['club_name']}",
-                        "{i}",
-                        "{uid}",
-                        "{map['name']}",
-                        "{csv_data[uid]}",
-                        "{map['wr']}"
-                    )
-                ''')
-
-        pass
+    with Cursor(FILE_DB) as db:
+        for map in maps:
+            db.execute(f'''
+                INSERT INTO WarriorOther (
+                    name,
+                    mapUid,
+                    mapId,
+                    campaignName,
+                    campaignId,
+                    authorTime,
+                    warriorTime,
+                    worldRecord,
+                    clubId,
+                    clubName
+                ) VALUES (
+                    "{map[0]}",
+                    "{map[1]}",
+                    "{map[2]}",
+                    "{map[3]}",
+                    {int(map[4])},
+                    {int(map[5])},
+                    {int(map[6])},
+                    {int(map[7])},
+                    {club_id},
+                    "{club_name}"
+                )
+            ''')
 
     pass
 
@@ -434,5 +434,9 @@ if __name__ == '__main__':
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # add_map_ids_to_warriors()
+    # warriors_to_github()
+    # tables_to_json()
+    # warriors_to_github()
+    # add_gold_times_to_warriors()
 
     pass

@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-08
+# m 2025-07-15
 
 import zipfile
 
@@ -208,7 +208,8 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                 reason      TEXT,
                 warriorTime INT,
                 worldRecord INT,
-                mapId       CHAR(36)
+                mapId       CHAR(36),
+                goldTime    INT
             );
         ''')
 
@@ -223,7 +224,8 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                     reason,
                     warriorTime,
                     worldRecord,
-                    mapId
+                    mapId,
+                    goldTime
                 ) VALUES (
                     "{map['authorTime']}",
                     "{map['campaignId']}",
@@ -233,7 +235,8 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                     {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
-                    "{map['mapId']}"
+                    "{map['mapId']}",
+                    "{map['goldTime']}"
                 )
             ''')
 
@@ -349,7 +352,8 @@ def schedule_totd_warrior(tokens: dict) -> bool:
                 reason      TEXT,
                 warriorTime INT,
                 worldRecord INT,
-                mapId       CHAR(36)
+                mapId       CHAR(36),
+                goldTime    INT
             );
         ''')
 
@@ -363,7 +367,8 @@ def schedule_totd_warrior(tokens: dict) -> bool:
                 reason,
                 warriorTime,
                 worldRecord,
-                mapId
+                mapId,
+                goldTime
             ) VALUES (
                 "{map['authorTime']}",
                 {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
@@ -373,7 +378,8 @@ def schedule_totd_warrior(tokens: dict) -> bool:
                 {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
                 "{map['warriorTime']}",
                 "{map['worldRecord']}",
-                "{map['mapId']}"
+                "{map['mapId']}",
+                "{map['goldTime']}"
             )
         ''')
 
@@ -490,7 +496,8 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                 reason      TEXT,
                 warriorTime INT,
                 worldRecord INT,
-                mapId       CHAR(36)
+                mapId       CHAR(36),
+                goldTime    INT
             );
         ''')
 
@@ -505,7 +512,8 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     reason,
                     warriorTime,
                     worldRecord,
-                    mapId
+                    mapId,
+                    goldTime
                 ) VALUES (
                     "{map['authorTime']}",
                     {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
@@ -515,7 +523,8 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
-                    "{map['mapId']}"
+                    "{map['mapId']}",
+                    "{map['goldTime']}"
                 )
             ''')
 
