@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-15
+# m 2025-07-18
 
 import zipfile
 
@@ -202,7 +202,6 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
             CREATE TABLE IF NOT EXISTS WarriorSeasonal (
                 authorTime  INT,
                 campaignId  INT,
-                custom      INT,
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
                 reason      TEXT,
@@ -218,7 +217,6 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                 INSERT INTO WarriorSeasonal (
                     authorTime,
                     campaignId,
-                    custom,
                     mapUid,
                     name,
                     reason,
@@ -229,7 +227,6 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                 ) VALUES (
                     "{map['authorTime']}",
                     "{map['campaignId']}",
-                    {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                     "{map['mapUid']}",
                     "{map['name']}",
                     {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
@@ -345,7 +342,6 @@ def schedule_totd_warrior(tokens: dict) -> bool:
         db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorTotd (
                 authorTime  INT,
-                custom      INT,
                 date        CHAR(10),
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
@@ -360,7 +356,6 @@ def schedule_totd_warrior(tokens: dict) -> bool:
         db.execute(f'''
             INSERT INTO WarriorTotd (
                 authorTime,
-                custom,
                 date,
                 mapUid,
                 name,
@@ -371,7 +366,6 @@ def schedule_totd_warrior(tokens: dict) -> bool:
                 goldTime
             ) VALUES (
                 "{map['authorTime']}",
-                {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                 "{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}",
                 "{map['mapUid']}",
                 "{map['name']}",
@@ -489,7 +483,6 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
         db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorWeekly (
                 authorTime  INT,
-                custom      INT,
                 mapUid      VARCHAR(27) PRIMARY KEY,
                 name        TEXT,
                 number      INT,
@@ -505,7 +498,6 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
             db.execute(f'''
                 INSERT INTO WarriorWeekly (
                     authorTime,
-                    custom,
                     mapUid,
                     name,
                     number,
@@ -516,7 +508,6 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     goldTime
                 ) VALUES (
                     "{map['authorTime']}",
-                    {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
                     "{map['mapUid']}",
                     "{map['name']}",
                     "{map['number']}",
