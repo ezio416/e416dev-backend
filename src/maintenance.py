@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-15
+# m 2025-07-19
 
 import csv
 from datetime import timezone
@@ -11,6 +11,16 @@ from files import *
 from github import *
 from utils import *
 from webhooks import *
+
+
+def add_campaign_ids_and_weeks_to_weekly_warriors() -> None:
+    with Cursor(FILE_DB) as db:
+        for entry in db.execute(f'SELECT * from Weekly').fetchall():
+            map = dict(entry)
+            db.execute(f'UPDATE WarriorWeekly SET campaignId = "{map['campaignId']}" where mapUid = "{map['mapUid']}"')
+            db.execute(f'UPDATE WarriorWeekly SET week = "{map['week']}" where mapUid = "{map['mapUid']}"')
+
+    pass
 
 
 def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0.5) -> None:
@@ -414,8 +424,6 @@ def test_unicode_encode_error() -> None:
 def warriors_to_github() -> None:
     warriors_to_json()
     to_github()
-    # warriors_to_old_json()
-    # to_github_old()
 
 
 if __name__ == '__main__':
@@ -423,7 +431,6 @@ if __name__ == '__main__':
     # migrate_old_warriors()
     # test_unicode_encode_error()
     # warriors_to_github()
-    # to_github_old()
     # test_club_campaign_error()
     # print(webhook_seasonal(None))
     # print(calc_warrior_time(25019, 23385, 0.65))  # sp25-01
@@ -436,7 +443,7 @@ if __name__ == '__main__':
     # add_map_ids_to_warriors()
     # warriors_to_github()
     # tables_to_json()
-    # warriors_to_github()
     # add_gold_times_to_warriors()
+    # add_campaign_ids_and_weeks_to_weekly_warriors()
 
     pass

@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-18
+# m 2025-07-19
 
 import zipfile
 
@@ -490,7 +490,9 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                 warriorTime INT,
                 worldRecord INT,
                 mapId       CHAR(36),
-                goldTime    INT
+                goldTime    INT,
+                campaignId  INT,
+                week        INT
             );
         ''')
 
@@ -505,7 +507,9 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     warriorTime,
                     worldRecord,
                     mapId,
-                    goldTime
+                    goldTime,
+                    campaignId,
+                    week
                 ) VALUES (
                     "{map['authorTime']}",
                     "{map['mapUid']}",
@@ -515,7 +519,9 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
                     "{map['mapId']}",
-                    "{map['goldTime']}"
+                    "{map['goldTime']}",
+                    "{map['campaignId']}",
+                    "{map['week']}"
                 )
             ''')
 
