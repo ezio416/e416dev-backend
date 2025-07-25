@@ -13,20 +13,65 @@ import uuid
 provider = Flask(__name__)
 
 
+@provider.route('/tm/map-review')
+@provider.route('/tm/map-review/')
+def tm_map_review():
+    with Cursor(FILE_DB) as db:
+        maps = [dict(map) for map in db.execute(f'SELECT * FROM MapReview').fetchall()]
+
+    ret = {
+        't': {
+            '1d': 0,
+            '7d': 0,
+            '30d': 0
+        },
+        'w': {
+            '1d': [0,0,0,0,0],
+            '7d': [0,0,0,0,0],
+            '30d': [0,0,0,0,0]
+        }
+    }
+
+    now = int(time.time())
+
+    for map in maps:
+        recency = now - map['timestamp']
+
+        if map['type'] == 'Totd':
+            if recency < 86_400:
+                ret['t']['1d'] += 1
+            if recency < 604_800:
+                ret['t']['7d'] += 1
+            if recency < 2_592_000:
+                ret['t']['30d'] += 1
+
+        elif map['type'] == 'Weekly':
+            number = int(map['number'])
+            if number and map['authorTime'] < 22000:
+                if recency < 86_400:
+                    ret['w']['1d'][number - 1] += 1
+                if recency < 604_800:
+                    ret['w']['7d'][number - 1] += 1
+                if recency < 2_592_000:
+                    ret['w']['30d'][number - 1] += 1
+
+    return ret
+
+
 @provider.route('/tm/map-review/add', methods=['POST'])
 @provider.route('/tm/map-review/add/', methods=['POST'])
 def tm_map_review_add():
     received = request.get_json()
 
     try:
-        name = str(received['mapName'])
-        type = str(received['reviewType'])
+        map_name = str(received['mapName'])
+        review_type = str(received['reviewType'])
 
         with Cursor(FILE_DB) as db:
             number = 0
             if all((
-                type == 'Weekly',
-                match := re.match(r'^([12345]) *[-‒–—᠆‐‑⁃﹣－] *.+', name)
+                review_type == 'Weekly',
+                match := re.match(r'^([12345]) *[-‒–—᠆‐‑⁃﹣－] *.+', map_name)
             )):
                 number = int(match.group(1))
 
@@ -40,11 +85,11 @@ def tm_map_review_add():
                     type
                 ) VALUES (
                     {int(received['authorTime'])},
-                    "{name}",
+                    "{map_name}",
                     "{received['mapUid']}",
                     {number},
                     {int(time.time())},
-                    "{type}"
+                    "{review_type}"
                 );
             ''')
 
