@@ -441,7 +441,7 @@ if __name__ == '__main__':
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # add_map_ids_to_warriors()
-    # warriors_to_github()
+    warriors_to_github()
     # tables_to_json()
     # add_gold_times_to_warriors()
     # add_campaign_ids_and_weeks_to_weekly_warriors()
