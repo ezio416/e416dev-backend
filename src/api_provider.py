@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-07-25
+# m 2025-07-26
 
 from flask import Flask, request, Response
 
@@ -13,121 +13,121 @@ import uuid
 provider = Flask(__name__)
 
 
-@provider.route('/tm/map-review')
-@provider.route('/tm/map-review/')
-def tm_map_review():
-    with Cursor(FILE_DB) as db:
-        maps = [dict(map) for map in db.execute(f'SELECT * FROM MapReview').fetchall()]
+# @provider.route('/tm/map-review')
+# @provider.route('/tm/map-review/')
+# def tm_map_review():
+#     with Cursor(FILE_DB) as db:
+#         maps = [dict(map) for map in db.execute(f'SELECT * FROM MapReview').fetchall()]
 
-    ret = {
-        't': {
-            '1d': 0,
-            '7d': 0,
-            '30d': 0
-        },
-        'w': {
-            '1d': [0,0,0,0,0],
-            '7d': [0,0,0,0,0],
-            '30d': [0,0,0,0,0]
-        }
-    }
+#     ret = {
+#         't': {
+#             '1d': 0,
+#             '7d': 0,
+#             '30d': 0
+#         },
+#         'w': {
+#             '1d': [0,0,0,0,0],
+#             '7d': [0,0,0,0,0],
+#             '30d': [0,0,0,0,0]
+#         }
+#     }
 
-    now = int(time.time())
+#     now = int(time.time())
 
-    for map in maps:
-        recency = now - map['timestamp']
+#     for map in maps:
+#         recency = now - map['timestamp']
 
-        if map['type'] == 'Totd':
-            if recency < 86_400:
-                ret['t']['1d'] += 1
-            if recency < 604_800:
-                ret['t']['7d'] += 1
-            if recency < 2_592_000:
-                ret['t']['30d'] += 1
+#         if map['type'] == 'Totd':
+#             if recency < 86_400:
+#                 ret['t']['1d'] += 1
+#             if recency < 604_800:
+#                 ret['t']['7d'] += 1
+#             if recency < 2_592_000:
+#                 ret['t']['30d'] += 1
 
-        elif map['type'] == 'Weekly':
-            number = int(map['number'])
-            if number and map['authorTime'] < 22000:
-                if recency < 86_400:
-                    ret['w']['1d'][number - 1] += 1
-                if recency < 604_800:
-                    ret['w']['7d'][number - 1] += 1
-                if recency < 2_592_000:
-                    ret['w']['30d'][number - 1] += 1
+#         elif map['type'] == 'Weekly':
+#             number = int(map['number'])
+#             if number and map['authorTime'] < 22000:
+#                 if recency < 86_400:
+#                     ret['w']['1d'][number - 1] += 1
+#                 if recency < 604_800:
+#                     ret['w']['7d'][number - 1] += 1
+#                 if recency < 2_592_000:
+#                     ret['w']['30d'][number - 1] += 1
 
-    return ret
-
-
-@provider.route('/tm/map-review/add', methods=['POST'])
-@provider.route('/tm/map-review/add/', methods=['POST'])
-def tm_map_review_add():
-    received = request.get_json()
-
-    try:
-        map_name = str(received['mapName'])
-        review_type = str(received['reviewType'])
-
-        with Cursor(FILE_DB) as db:
-            number = 0
-            if all((
-                review_type == 'Weekly',
-                match := re.match(r'^([12345]) *[-‒–—᠆‐‑⁃﹣－] *.+', map_name)
-            )):
-                number = int(match.group(1))
-
-            db.execute(f'''
-                REPLACE INTO MapReview (
-                    authorTime,
-                    mapName,
-                    mapUid,
-                    number,
-                    timestamp,
-                    type
-                ) VALUES (
-                    {int(received['authorTime'])},
-                    "{map_name}",
-                    "{received['mapUid']}",
-                    {number},
-                    {int(time.time())},
-                    "{review_type}"
-                );
-            ''')
-
-    except Exception as e:
-        print(e)
-        return {'success': False}
-
-    return {'success': True}
+#     return ret
 
 
-@provider.route('/tm/map-review/auth/create', methods=['POST'])
-@provider.route('/tm/map-review/auth/create/', methods=['POST'])
-def tm_map_review_auth_create():
-    token = str(uuid.uuid4())
-    expiry = int(time.time()) + 86400
+# @provider.route('/tm/map-review/add', methods=['POST'])
+# @provider.route('/tm/map-review/add/', methods=['POST'])
+# def tm_map_review_add():
+#     received = request.get_json()
 
-    with Cursor(FILE_DB) as db:
-        db.execute(f'INSERT INTO MapReviewTokens (token, expiry) VALUES ("{token}", {expiry});')
+#     try:
+#         map_name = str(received['mapName'])
+#         review_type = str(received['reviewType'])
 
-    return {'token': token, 'expiry': expiry}
+#         with Cursor(FILE_DB) as db:
+#             number = 0
+#             if all((
+#                 review_type == 'Weekly',
+#                 match := re.match(r'^([12345]) *[-‒–—᠆‐‑⁃﹣－] *.+', map_name)
+#             )):
+#                 number = int(match.group(1))
+
+#             db.execute(f'''
+#                 REPLACE INTO MapReview (
+#                     authorTime,
+#                     mapName,
+#                     mapUid,
+#                     number,
+#                     timestamp,
+#                     type
+#                 ) VALUES (
+#                     {int(received['authorTime'])},
+#                     "{map_name}",
+#                     "{received['mapUid']}",
+#                     {number},
+#                     {int(time.time())},
+#                     "{review_type}"
+#                 );
+#             ''')
+
+#     except Exception as e:
+#         print(e)
+#         return {'success': False}
+
+#     return {'success': True}
 
 
-@provider.route('/tm/map-review/auth/verify')
-@provider.route('/tm/map-review/auth/verify/')
-def tm_map_review_auth_verify():
-    if token := request.args.get('token', None, str):
-        with Cursor(FILE_DB) as db:
-            try:
-                row = dict(db.execute(f'SELECT * FROM MapReviewTokens WHERE token="{token}";').fetchone())
-                # print(f'row: {row}')
-                valid = row['expiry'] > int(time.time()) - 86400
-                # print(f'valid: {valid}')
-                return {'valid': valid}
-            except Exception:
-                # print('exception')
-                return {'valid': False}
+# @provider.route('/tm/map-review/auth/create', methods=['POST'])
+# @provider.route('/tm/map-review/auth/create/', methods=['POST'])
+# def tm_map_review_auth_create():
+#     token = str(uuid.uuid4())
+#     expiry = int(time.time()) + 86400
 
-    return {'valid': False}
+#     with Cursor(FILE_DB) as db:
+#         db.execute(f'INSERT INTO MapReviewTokens (token, expiry) VALUES ("{token}", {expiry});')
+
+#     return {'token': token, 'expiry': expiry}
+
+
+# @provider.route('/tm/map-review/auth/verify')
+# @provider.route('/tm/map-review/auth/verify/')
+# def tm_map_review_auth_verify():
+#     if token := request.args.get('token', None, str):
+#         with Cursor(FILE_DB) as db:
+#             try:
+#                 row = dict(db.execute(f'SELECT * FROM MapReviewTokens WHERE token="{token}";').fetchone())
+#                 # print(f'row: {row}')
+#                 valid = row['expiry'] > int(time.time()) - 86400
+#                 # print(f'valid: {valid}')
+#                 return {'valid': valid}
+#             except Exception:
+#                 # print('exception')
+#                 return {'valid': False}
+
+#     return {'valid': False}
 
 
 @provider.route('/tm/calc_warrior_time')
