@@ -30,13 +30,13 @@ def get_account_name(tokens: dict, account_id: str) -> str:
     req: dict = {}
 
     try:
-        time.sleep(WAIT_TIME)
+        time.sleep(NADEO_WAIT_TIME)
         req = oauth.account_names_from_ids(tokens['oauth'], account_id)
 
     except ValueError:
         tokens['oauth'] = get_token_oauth()
 
-        time.sleep(WAIT_TIME)
+        time.sleep(NADEO_WAIT_TIME)
         req = oauth.account_names_from_ids(tokens['oauth'], account_id)
 
     if not req or type(req) is not dict:
@@ -75,7 +75,7 @@ def get_map_infos(tokens: dict, table: str) -> bool:
     for i, group in enumerate(uid_groups):
         utils.log(f'info: get_map_info {i + 1}/{len(uid_groups)} groups...')
 
-        time.sleep(WAIT_TIME)
+        time.sleep(NADEO_WAIT_TIME)
         info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
 
         for entry in info:

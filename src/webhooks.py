@@ -1,6 +1,7 @@
 # c 2025-01-27
 # m 2025-08-04
 
+import json
 import time
 
 import discord_webhook as dc
@@ -10,6 +11,20 @@ from constants import *
 import errors
 import files
 import utils
+
+
+def backend_error(url: str, content: str, data: dict = {}) -> None:
+    webhook = dc.DiscordWebhook(url, content=content)
+
+    if data:
+        webhook.add_file(json.dumps(data, indent=4).encode(), 'data.json')
+
+    execute(webhook)
+
+
+def execute(webhook: dc.DiscordWebhook) -> None:
+    time.sleep(DISCORD_WAIT_TIME)
+    webhook.execute()
 
 
 def execute_schedule(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
@@ -23,8 +38,7 @@ def execute_schedule(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
 
     webhook = dc.DiscordWebhook(url)
     webhook.add_embed(embed)
-    time.sleep(DISCORD_WAIT_TIME)
-    webhook.execute()
+    execute(webhook)
 
 
 def execute_warrior(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
@@ -46,8 +60,7 @@ def execute_warrior(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
 
     webhook = dc.DiscordWebhook(url)
     webhook.add_embed(embed)
-    time.sleep(DISCORD_WAIT_TIME)
-    webhook.execute()
+    execute(webhook)
 
 
 @errors.safelogged(bool)

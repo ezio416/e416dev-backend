@@ -21,7 +21,7 @@ def send() -> None:
         'X_GitHub-Api-Version': '2022-11-28'
     }
 
-    time.sleep(WAIT_TIME)
+    time.sleep(NADEO_WAIT_TIME)
     utils.log('info: getting info from Github')
     req = requests.get(base_url, headers=headers)
     contents = req.json()
@@ -47,7 +47,7 @@ def send() -> None:
             if basename != item['name'] or sha == item['sha']:
                 continue
 
-            time.sleep(WAIT_TIME)
+            time.sleep(NADEO_WAIT_TIME)
             utils.log(f'info: sending to Github: {basename}')
             sent = requests.put(
                 f'{base_url}/{basename}',

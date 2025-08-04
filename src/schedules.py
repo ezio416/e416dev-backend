@@ -16,7 +16,7 @@ import utils
 
 @errors.safelogged(bool)
 def seasonal(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
+    time.sleep(NADEO_WAIT_TIME)
     maps_seasonal: dict = live.maps_campaign(tokens['live'], 99)
 
     if os.path.isfile(FILE_SEASONAL_RAW):
@@ -112,7 +112,7 @@ def seasonal_warriors(tokens: dict) -> bool:
     for uid, map in maps.items():
         utils.log(f'info: getting records for "{map['name']}"')
 
-        time.sleep(WAIT_TIME)
+        time.sleep(NADEO_WAIT_TIME)
         req: dict = live.get(
             tokens['live'],
             f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
@@ -166,7 +166,7 @@ def seasonal_warriors(tokens: dict) -> bool:
 
 @errors.safelogged(bool)
 def totd(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
+    time.sleep(NADEO_WAIT_TIME)
     maps_totd: dict = live.maps_totd(tokens['live'], 99)
 
     if os.path.isfile(FILE_TOTD_RAW):
@@ -256,7 +256,7 @@ def totd_warrior(tokens: dict) -> bool:
 
     utils.log(f'info: getting records for TOTD {map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}')
 
-    time.sleep(WAIT_TIME)
+    time.sleep(NADEO_WAIT_TIME)
     req: dict = live.get(
         tokens['live'],
         f'api/token/leaderboard/group/Personal_Best/map/{map['mapUid']}/top'
@@ -309,7 +309,7 @@ def totd_warrior(tokens: dict) -> bool:
 
 @errors.safelogged(bool)
 def weekly(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
+    time.sleep(NADEO_WAIT_TIME)
     maps_weekly: dict = live.get(tokens['live'], 'api/campaign/weekly-shorts?length=99')
 
     if os.path.isfile(FILE_WEEKLY_RAW):
@@ -397,7 +397,7 @@ def weekly_warriors(tokens: dict) -> bool:
     for uid, map in maps.items():
         utils.log(f'info: getting records for week {map['week']} map "{map['name']}"')
 
-        time.sleep(WAIT_TIME)
+        time.sleep(NADEO_WAIT_TIME)
         req: dict = live.get(
             tokens['live'],
             f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
