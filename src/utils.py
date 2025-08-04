@@ -61,9 +61,9 @@ def format_long_time(input_s: int) -> str:
 
 
 def format_race_time(input_ms: int) -> str:
-    min: int = int(input_ms / 60000)
-    sec: int = int((input_ms - (min * 60000)) / 1000)
-    ms:  int = input_ms % 1000
+    min: int = int(input_ms / 60_000)
+    sec: int = int((input_ms - (min * 60_000)) / 1_000)
+    ms:  int = input_ms % 1_000
 
     return f'{min}:{str(sec).zfill(2)}.{str(ms).zfill(3)}'
 

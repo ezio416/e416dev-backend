@@ -90,7 +90,7 @@ def seasonal(tokens: dict) -> bool:
                     )
                 ''')
 
-    files.write_db_key_val('warrior_seasonal', int(files.read_db_key_val('next_seasonal')) + 60*60*24*14)
+    files.write_db_key_val('warrior_seasonal', int(files.read_db_key_val('next_seasonal')) + utils.weeks_to_seconds(2))
 
     if maps_seasonal['nextRequestTimestamp'] != -1:
         files.write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
@@ -240,7 +240,7 @@ def totd(tokens: dict) -> bool:
                 ''')
 
     last_totd: int = int(files.read_db_key_val('next_totd'))
-    files.write_db_key_val('warrior_totd', last_totd + 60*60*2)
+    files.write_db_key_val('warrior_totd', last_totd + utils.hours_to_seconds(2))
     if maps_totd['nextRequestTimestamp'] != -1:
         files.write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
     else:
@@ -467,7 +467,7 @@ def schedule(tokens: dict, key: str, ts: int, schedule_func, table: str, webhook
         tries -= 1
         time.sleep(5)
     if not success:
-        files.write_db_key_val(key, ts + 60*3)
+        files.write_db_key_val(key, ts + utils.minutes_to_seconds(3))
         raise RuntimeError(f'error: {schedule_func.__name__}(), trying again in 3 minutes')
 
     tries = 4
@@ -476,7 +476,7 @@ def schedule(tokens: dict, key: str, ts: int, schedule_func, table: str, webhook
         tries -= 1
         time.sleep(5)
     if not success:
-        files.write_db_key_val(key, ts + 60*3)
+        files.write_db_key_val(key, ts + utils.minutes_to_seconds(3))
         raise RuntimeError(f'error: get_map_infos({table}), trying again in 3 minutes')
 
     if not webhook_func(tokens):
@@ -497,7 +497,7 @@ def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_fun
         tries -= 1
         time.sleep(5)
     if not success:
-        files.write_db_key_val(key, ts + 60*3)
+        files.write_db_key_val(key, ts + utils.minutes_to_seconds(3))
         raise RuntimeError(f'error: {warrior_func.__name__}(), trying again in 3 minutes')
 
     if not webhook_func():
