@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-30
+# m 2025-08-04
 
 import csv
 from datetime import timezone
@@ -206,156 +206,6 @@ def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, fac
     return maps
 
 
-def migrate_old_warriors() -> None:
-    with Cursor('C:/Users/Ezio/Code/e416dev_api/tm.db') as db:
-        camp: list[dict] = []
-        for entry in db.execute('SELECT * FROM CampaignWarriors').fetchall():
-            camp.append(dict(entry))
-
-        other: list[dict] = []
-        for entry in db.execute('SELECT * FROM OtherWarriors').fetchall():
-            other.append(dict(entry))
-
-        totd: list[dict] = []
-        for entry in db.execute('SELECT * FROM TotdWarriors').fetchall():
-            totd.append(dict(entry))
-
-    def migrate_seasonal() -> None:
-        with Cursor(FILE_DB) as db:
-            db.execute('DROP TABLE IF EXISTS WarriorSeasonal')
-            db.execute(f'''
-                CREATE TABLE IF NOT EXISTS WarriorSeasonal (
-                    authorTime  INT,
-                    campaignId  INT,
-                    custom      INT,
-                    mapUid      VARCHAR(27) PRIMARY KEY,
-                    name        TEXT,
-                    reason      TEXT,
-                    warriorTime INT,
-                    worldRecord INT
-                );
-            ''')
-
-            for map in camp:
-                db.execute(f'''
-                    INSERT INTO WarriorSeasonal (
-                        authorTime,
-                        campaignId,
-                        custom,
-                        mapUid,
-                        name,
-                        reason,
-                        warriorTime,
-                        worldRecord
-                    ) VALUES (
-                        "{map['authorTime']}",
-                        "{map['campaignId']}",
-                        {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
-                        "{map['uid']}",
-                        "{map['name']}",
-                        {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
-                        "{map['warriorTime']}",
-                        "{map['worldRecord']}"
-                    )
-                ''')
-
-    def migrate_other() -> None:
-        with Cursor(FILE_DB) as db:
-            db.execute('DROP TABLE IF EXISTS WarriorOther')
-            db.execute(f'''
-                CREATE TABLE IF NOT EXISTS WarriorOther (
-                    authorTime   INT,
-                    campaignId   INT,
-                    campaignName TEXT,
-                    clubId       INT,
-                    clubName     TEXT,
-                    custom       INT,
-                    mapIndex     INT,
-                    mapUid       VARCHAR(27) PRIMARY KEY,
-                    name         TEXT,
-                    reason       TEXT,
-                    warriorTime  INT,
-                    worldRecord  INT
-                );
-            ''')
-
-            for map in other:
-                db.execute(f'''
-                    INSERT INTO WarriorOther (
-                        authorTime,
-                        campaignId,
-                        campaignName,
-                        clubId,
-                        clubName,
-                        custom,
-                        mapIndex,
-                        mapUid,
-                        name,
-                        reason,
-                        warriorTime,
-                        worldRecord
-                    ) VALUES (
-                        "{map['authorTime']}",
-                        "{map['campaignId']}",
-                        "{map['campaignName']}",
-                        "{map['clubId']}",
-                        "{map['clubName']}",
-                        {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
-                        "{map['campaignIndex']}",
-                        "{map['uid']}",
-                        "{map['name']}",
-                        {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
-                        "{map['warriorTime']}",
-                        "{map['worldRecord']}"
-                    )
-                ''')
-
-    def migrate_totd() -> None:
-        with Cursor(FILE_DB) as db:
-            db.execute('DROP TABLE IF EXISTS WarriorTotd')
-            db.execute(f'''
-                CREATE TABLE IF NOT EXISTS WarriorTotd (
-                    authorTime  INT,
-                    custom      INT,
-                    date        CHAR(10),
-                    mapUid      VARCHAR(27) PRIMARY KEY,
-                    name        TEXT,
-                    reason      TEXT,
-                    warriorTime INT,
-                    worldRecord INT
-                );
-            ''')
-
-            for map in totd:
-                db.execute(f'''
-                    INSERT INTO WarriorTotd (
-                        authorTime,
-                        custom,
-                        date,
-                        mapUid,
-                        name,
-                        reason,
-                        warriorTime,
-                        worldRecord
-                    ) VALUES (
-                        "{map['authorTime']}",
-                        {f'"{map['custom']}"' if 'custom' in map and map['custom'] is not None else 'NULL'},
-                        "{map['date']}",
-                        "{map['uid']}",
-                        "{map['name']}",
-                        {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
-                        "{map['warriorTime']}",
-                        "{map['worldRecord']}"
-                    )
-                ''')
-
-    migrate_seasonal()
-    migrate_other()
-    migrate_totd()
-
-    pass
-
-
 def process_u10s() -> None:
     def load_csv() -> dict:
         data = []
@@ -443,15 +293,9 @@ def warriors_to_github() -> None:
 
 if __name__ == '__main__':
     # display_db_epoch_vals()
-    # migrate_old_warriors()
     # test_unicode_encode_error()
-    # warriors_to_github()
     # test_club_campaign_error()
     # print(webhook_seasonal(None))
-    # print(calc_warrior_time(25019, 23385, 0.65))  # sp25-01
-    # print(calc_warrior_time(27472, 25798, 0.55))  # sp25-06
-    # print(calc_warrior_time(37288, 34724, 0.45))  # sp25-11
-    # print(calc_warrior_time(42927, 40006, 0.35))  # sp25-16
     print(calc_warrior_time(18518, 14811, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school

@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-05-22
+# m 2025-08-04
 
 from errors import safelogged
 from types import TracebackType
@@ -121,28 +121,6 @@ def warriors_to_json() -> None:
             warriors[table] = sorted(warriors[table], key=lambda x: x['date'])
 
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
-        json.dump(warriors, f, indent=4)
-        f.write('\n')
-
-
-@safelogged()
-def warriors_to_old_json() -> None:
-    warriors = {}
-
-    for table_type in ('Seasonal', 'Totd', 'Other'):
-        for map in read_table(f'Warrior{table_type}'):
-            map['uid'] = map['mapUid']
-            map.pop('mapUid')
-
-            if table_type == 'Seasonal':
-                map['clubId'] = 0
-            elif table_type == 'Other':
-                map['campaignIndex'] = map['mapIndex']
-                map.pop('mapIndex')
-
-            warriors[map['uid']] = dict(sorted(map.items()))
-
-    with open(FILE_WARRIOR_OLD, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
         f.write('\n')
 
