@@ -14,11 +14,11 @@ import webhooks
 
 
 def backend() -> None:
-    tokens = api.get_tokens()
+    tokens: dict = api.get_tokens()
 
     while True:
         time.sleep(1)
-        ts = utils.stamp()
+        ts: int = utils.stamp()
         utils.log('loop', log_file=False)
 
         for audience, token in tokens.items():  # bandaid

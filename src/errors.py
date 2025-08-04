@@ -7,36 +7,51 @@ import traceback as tb
 
 import discord_webhook as dc
 
+from constants import *
 import utils
 
 
+def add_locals(locals: dict[str, dict[str, str]], frame: tb.FrameSummary) -> dict[str, dict[str, str]]:
+    locals[f'{frame.filename.split('\\')[-1].replace('.py', '')}.{frame.name}'] = clean_locals(frame.locals)
+    return locals
+
+
+def clean_locals(locals: dict[str, str]) -> dict[str, str]:
+    if not locals:
+        return {}
+
+    import constants
+
+    for local, value in locals.copy().items():
+        if any((
+            local.startswith('__') and local.endswith('__'),
+            local in constants.__annotations__,
+            value.startswith('<class '),
+            value.startswith('<function '),
+            value.startswith('<module ')
+        )):
+            locals.pop(local)
+
+    return locals
+
+
 def error(e: Exception, silent: bool = False) -> None:
-    def clear_builtins(locals: dict[str, str]) -> None | dict[str, str]:
-        if not locals:
-            return
+    locals: dict[str, dict[str, str]] = {}
 
-        loc = locals.copy()
-        if '__builtins__' in loc:
-            loc.pop('__builtins__')
-        return loc
-
-    locals = []
-
-    root_stack = []
-    summary = tb.StackSummary.extract(tb.walk_stack(e.__traceback__.tb_frame), capture_locals=True)
+    root_stack: list = []
+    summary: tb.StackSummary = tb.StackSummary.extract(tb.walk_stack(e.__traceback__.tb_frame), capture_locals=True)
     for frame in reversed(summary):
-        if 'e416dev-backend' in frame.filename:
+        if frame.name != 'wrapper' and 'e416dev-backend' in frame.filename:
             root_stack.append(f'{os.path.basename(frame.filename)}, line {frame.lineno}, in {frame.name}')
-            locals.append(clear_builtins(frame.locals))
-    locals.pop()  # duplicate from wrapper
+            locals = add_locals(locals, frame)
 
-    exc = tb.TracebackException.from_exception(e, capture_locals=True)
+    exc: tb.TracebackException = tb.TracebackException.from_exception(e, capture_locals=True)
 
-    tb_stack = []
-    formatted = list(exc.format())
+    tb_stack: list = []
+    formatted: list[str] = list(exc.format())
     for line in formatted[1:-1]:
-        parts = line.split('\n')[:-1]
-        halves = parts[0].split('"')
+        parts: list[str] = line.split('\n')[:-1]
+        halves: list[str] = parts[0].split('"')
         parts[0] = f'{os.path.basename(halves[1])}{halves[2]}'
         parts = parts[:3]
         if '=' in parts[-1]:  # no col specifier, start of locals
@@ -48,14 +63,19 @@ def error(e: Exception, silent: bool = False) -> None:
     tb_stack.append(formatted[-1].rstrip('\n'))
 
     for frame in exc.stack:
-        locals.append(clear_builtins(frame.locals))
-    local_data = json.dumps(locals, indent=2, sort_keys=False).encode()
+        locals = add_locals(locals, frame)
+    local_data: bytes = json.dumps(locals, indent=2, sort_keys=False).encode()
 
     utils.log(f'error: eid-{id(e)} {tb_stack[-1]}')
 
     if not silent:
-        content = f'<@&1205257336252534814> `eid-{id(e)}`\n`{utils.now(False)}`\n```py\n{\
-            '\n'.join(root_stack)}\n{'\n'.join(tb_stack[1:-1])}````{tb_stack[-1]}`'
+        content: str = f'{DISCORD_USER_ROLE} `eid-{id(e)}`'
+        content += f'\n`{utils.now(False, False)}`'
+        content += f'\n`{tb_stack[-1]}`'
+        content += '\n```py'
+        content += f'\n{'\n'.join(root_stack)}'
+        content += f'\n{'\n'.join(tb_stack[1:-1])}'
+        content += '```'
 
         webhook = dc.DiscordWebhook(
             os.environ['DCWH_SITE_BACKEND_ERRORS'],
@@ -63,16 +83,17 @@ def error(e: Exception, silent: bool = False) -> None:
         )
         webhook.add_file(local_data, 'locals.json')
         webhook.execute()
+        pass
 
 
-def safelogged(return_type: type = None, silent: bool = False, do_log: bool = True):
+def safelogged(return_type: type = None, silent: bool = False, log: bool = True):
     def inner(func):
         def wrapper(*args, **kwargs):
             if return_type is not None and return_type.__class__ is not type:
                 print(f'{return_type.__name__} is not a type')
                 return None
 
-            if do_log and not silent:
+            if log and not silent:
                 utils.log(f'info: called {func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
 
             try:
