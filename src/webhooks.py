@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-04-01
+# m 2025-08-04
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
@@ -46,28 +46,6 @@ def execute_warrior(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> 
     time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
     pass
-
-
-@safelogged(bool)
-def webhook_royal(tokens: dict) -> bool:  # still need to check if map is new
-    with Cursor(FILE_DB) as db:
-        map: dict = dict(db.execute('SELECT * FROM Royal ORDER BY number DESC').fetchone())
-
-    if not (account_name := get_account_name(tokens, map['author'])):
-        raise ValueError(f'no account name for {map['author']}')
-
-    execute_schedule(
-        DiscordWebhook(os.environ['DCWH_TM_ROYAL_UPDATES']),
-        DiscordEmbed(
-            f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
-            f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
-                })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
-            color='FFAA00'
-        ),
-        map
-    )
-
-    return True
 
 
 @safelogged(bool)

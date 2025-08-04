@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-04-03
+# m 2025-08-04
 
 from multiprocessing import Process
 import time
@@ -28,8 +28,7 @@ def backend() -> None:
         if any((
             schedule(tokens, 'next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),
             schedule(tokens, 'next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd),
-            schedule(tokens, 'next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly),
-            # schedule(tokens, 'next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
+            schedule(tokens, 'next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly)
         )):
             tables_to_json()
             to_github()

@@ -100,7 +100,6 @@ def read_table(table: str) -> list[dict]:
 @safelogged()
 def tables_to_json() -> None:
     for table_name, output_file in (
-        ('Royal',    FILE_ROYAL),
         ('Seasonal', FILE_SEASONAL),
         ('Totd',     FILE_TOTD),
         ('Weekly',   FILE_WEEKLY),

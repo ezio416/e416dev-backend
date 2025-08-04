@@ -25,7 +25,6 @@ def to_github() -> None:
     contents = req.json()
 
     for file in (
-        FILE_ROYAL,
         FILE_SEASONAL,
         FILE_TOTD,
         FILE_WARRIOR,
