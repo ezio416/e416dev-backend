@@ -8,7 +8,7 @@ import sqlite3 as sql
 
 CAMPAIGN_SERIES:   tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
 DISCORD_WAIT_TIME: float      = 1.0
-COLOR_WARRIOR:     str        = '33CCFF'
+COLOR_WARRIOR:     str        = '3388CC'
 MEDAL_AUTHOR:      str        = '<:MedalAuthor:736600847219294281>'
 MEDAL_BRONZE:      str        = '<:MedalBronze:736600847630336060>'
 MEDAL_GOLD:        str        = '<:MedalGold:736600847588261988>'
