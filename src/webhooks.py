@@ -28,17 +28,15 @@ def execute_warrior(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> 
     wm: int = map['warriorTime']
     wr: int = map['worldRecord']
 
-    fmt_rt = format_race_time
-
     if wr <= wm:
-        embed_str: str = f'🥇 {fmt_rt(wr)}'
-        embed_str += f'\n{MEDAL_WARRIOR} **{fmt_rt(wm)}** *(+{fmt_rt(wm - wr)})*'
-        embed_str += f'\n{MEDAL_AUTHOR} {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
+        embed_str: str = f'🥇 {format_race_time(wr)}'
+        embed_str += f'\n{MEDAL_WARRIOR} **{format_race_time(wm)}** *(+{format_race_time(wm - wr)})*'
+        embed_str += f'\n{MEDAL_AUTHOR} {format_race_time(at)} *(+{format_race_time(at - wm)})*'
 
     else:
-        embed_str: str = f'{MEDAL_WARRIOR} **{fmt_rt(wm)}**'
-        embed_str += f'\n{MEDAL_AUTHOR} {fmt_rt(at)} *(+{fmt_rt(at - wm)})*'
-        embed_str += f'\n🥇 {fmt_rt(wr)} *(+{fmt_rt(wr - at)})*'
+        embed_str: str = f'{MEDAL_WARRIOR} **{format_race_time(wm)}**'
+        embed_str += f'\n{MEDAL_AUTHOR} {format_race_time(at)} *(+{format_race_time(at - wm)})*'
+        embed_str += f'\n🥇 {format_race_time(wr)} *(+{format_race_time(wr - at)})*'
 
     embed.add_embed_field('Times', embed_str, False)
 
