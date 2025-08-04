@@ -45,7 +45,7 @@ def get_account_name(tokens: dict, account_id: str) -> str:
     name: str = req[account_id]
     accounts[account_id] = {}
     accounts[account_id]['name'] = name
-    accounts[account_id]['ts'] = ts + 60*60*24
+    accounts[account_id]['ts'] = ts + utils.days_to_seconds(1)
 
     return name
 
