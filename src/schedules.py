@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-07-19
+# m 2025-08-04
 
 import zipfile
 
@@ -172,7 +172,12 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
                 ''')
 
     write_db_key_val('warrior_seasonal', int(read_db_key_val('next_seasonal')) + 60*60*24*14)
-    write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+
+    if maps_seasonal['nextRequestTimestamp'] != -1:
+        write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+    else:
+        pass
+
     return True
 
 
@@ -317,8 +322,11 @@ def schedule_totd_maps(tokens: dict) -> bool:
 
     last_totd: int = int(read_db_key_val('next_totd'))
     write_db_key_val('warrior_totd', last_totd + 60*60*2)
-    # write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])  # returns -1 as of 2025-06-22
-    write_db_key_val('next_totd', last_totd + 86400)  # will break for daylight savings
+    if maps_totd['nextRequestTimestamp'] != -1:
+        write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
+    else:
+        write_db_key_val('next_totd', last_totd + 86400)
+
     return True
 
 
@@ -576,6 +584,6 @@ def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_fun
     if not webhook_func():
         raise RuntimeError(f'error: {webhook_func.__name__}()')
 
-    write_db_key_val(key, 2_147_000_000)
+    write_db_key_val(f'last_{key}', val)
 
     return True

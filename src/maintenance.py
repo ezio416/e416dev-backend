@@ -1,10 +1,11 @@
 # c 2025-01-27
-# m 2025-07-19
+# m 2025-07-30
 
 import csv
 from datetime import timezone
 
 from nadeo_api import live
+from requests import post
 
 from api import *
 from files import *
@@ -24,7 +25,8 @@ def add_campaign_ids_and_weeks_to_weekly_warriors() -> None:
 
 
 def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0.5) -> None:
-    tokens = get_tokens()
+    # tokens = get_tokens()
+    tokens = {'live': get_token_live()}
     maps = get_tops_for_club_campaign(tokens, club_id, campaign_id, factor)
 
     with Cursor(FILE_DB) as db:
@@ -43,7 +45,8 @@ def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0
                     name,
                     warriorTime,
                     worldRecord,
-                    mapId
+                    mapId,
+                    goldTime
                 ) VALUES (
                     "{map['at']}",
                     "{map['campaign_id']}",
@@ -55,7 +58,8 @@ def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0
                     "{map['name']}",
                     "{map['wm']}",
                     "{map['wr']}",
-                    "{map['id']}"
+                    "{map['id']}",
+                    "{map['gt']}"
                 )
             ''')
 
@@ -179,6 +183,7 @@ def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, fac
             'campaign_name': campaign_name,
             'club_id': club_id,
             'club_name': club_name,
+            'gt': entry['goldTime'],
             'id': entry['mapId'],
             'name': entry['name'],
             'uid': entry['uid']
@@ -411,6 +416,16 @@ def test_club_campaign_error() -> None:
     pass
 
 
+def test_secret_times() -> None:
+    token = get_token_oauth()
+    req = post(
+        'https://trackmania.com/tracks/ZZeF_oCW5MvMrMhJ2dYMirxOc60',
+        f'top_secret%5BthresholdScore%5D=29872&top_secret%5B_token%5D={token.access_token}'
+    )
+
+    pass
+
+
 def test_unicode_encode_error() -> None:
     s = 'Ma\u0142opolskie'
     with open('locals.txt', 'a', newline='\n') as f:
@@ -437,13 +452,16 @@ if __name__ == '__main__':
     # print(calc_warrior_time(27472, 25798, 0.55))  # sp25-06
     # print(calc_warrior_time(37288, 34724, 0.45))  # sp25-11
     # print(calc_warrior_time(42927, 40006, 0.35))  # sp25-16
-    # print(calc_warrior_time(20000, 16426, 0.5))
+    print(calc_warrior_time(18518, 14811, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # add_map_ids_to_warriors()
-    warriors_to_github()
+    # warriors_to_github()
     # tables_to_json()
     # add_gold_times_to_warriors()
     # add_campaign_ids_and_weeks_to_weekly_warriors()
+    # test_secret_times()
+    # for campaign_id in [77195, 78234, 84886, 91855, 97842]:
+    #     add_club_campaign_warriors(65094, campaign_id)
 
     pass

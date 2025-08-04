@@ -13,7 +13,7 @@ accounts: dict[str, dict] = {}
 
 @safelogged(str)
 def get_account_name(tokens: dict, account_id: str) -> str:
-    if account_id == 'd2372a08-a8a1-46cb-97fb-23a161d85ad0':
+    if account_id == 'd2372a08-a8a1-46cb-97fb-23a161d85ad0':  # todo: add Nadeo. account
         return 'Nadeo'
 
     global accounts
