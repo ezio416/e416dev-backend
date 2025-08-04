@@ -5,7 +5,7 @@ import datetime
 import re
 import time
 
-from pytz import timezone as tz
+import pytz
 
 from constants import *
 
@@ -88,9 +88,9 @@ def minutes_to_seconds(minutes: int) -> int:
 
 
 def now(brackets: bool = True) -> str:
-    utc    = datetime.datetime.now(tz('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-    denver = f'Denver {datetime.datetime.now(tz('America/Denver')).strftime('%H:%M')}'
-    paris  = f'Paris {datetime.datetime.now(tz('Europe/Paris')).strftime('%H:%M')}'
+    utc    = datetime.datetime.now(pytz.timezone('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+    denver = f'Denver {datetime.datetime.now(pytz.timezone('America/Denver')).strftime('%H:%M')}'
+    paris  = f'Paris {datetime.datetime.now(pytz.timezone('Europe/Paris')).strftime('%H:%M')}'
     return f'{'[' if brackets else ''}{utc} ({denver}, {paris}){']' if brackets else ''}'
 
 

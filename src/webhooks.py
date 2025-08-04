@@ -3,7 +3,7 @@
 
 import time
 
-import discord_webhook
+import discord_webhook as dc
 
 import api
 from constants import *
@@ -12,7 +12,7 @@ import files
 import utils
 
 
-def execute_schedule(url: str, embed: discord_webhook.DiscordEmbed, map: dict) -> None:
+def execute_schedule(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
     embed_str: str = f'{MEDAL_AUTHOR} {utils.format_race_time(map['authorTime'])}'
     embed_str += f'\n{MEDAL_GOLD} {utils.format_race_time(map['goldTime'])}'
     embed_str += f'\n{MEDAL_SILVER} {utils.format_race_time(map['silverTime'])}'
@@ -21,13 +21,13 @@ def execute_schedule(url: str, embed: discord_webhook.DiscordEmbed, map: dict) -
 
     embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
 
-    webhook = discord_webhook.DiscordWebhook(url)
+    webhook = dc.DiscordWebhook(url)
     webhook.add_embed(embed)
     time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
 
 
-def execute_warrior(url: str, embed: discord_webhook.DiscordEmbed, map: dict) -> None:
+def execute_warrior(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
     at: int = map['authorTime']
     wm: int = map['warriorTime']
     wr: int = map['worldRecord']
@@ -44,7 +44,7 @@ def execute_warrior(url: str, embed: discord_webhook.DiscordEmbed, map: dict) ->
 
     embed.add_embed_field('Times', embed_str, False)
 
-    webhook = discord_webhook.DiscordWebhook(url)
+    webhook = dc.DiscordWebhook(url)
     webhook.add_embed(embed)
     time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
@@ -61,7 +61,7 @@ def seasonal(tokens: dict) -> bool:
     for map in maps:
         execute_schedule(
             os.environ['DCWH_TM_SEASONAL_UPDATES'],
-            discord_webhook.DiscordEmbed(
+            dc.DiscordEmbed(
                 utils.strip_format_codes(map['name']),
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=CAMPAIGN_SERIES[int(map['mapIndex'] / 5)]
@@ -83,7 +83,7 @@ def seasonal_warriors() -> bool:
     for map in maps:
         execute_warrior(
             os.environ['DCWH_TM_WARRIOR_UPDATES'],
-            discord_webhook.DiscordEmbed(
+            dc.DiscordEmbed(
                 f'{map['name']}',
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=COLOR_WARRIOR
@@ -104,7 +104,7 @@ def totd(tokens: dict) -> bool:
 
     execute_schedule(
         os.environ['DCWH_TM_TOTD_UPDATES'],
-        discord_webhook.DiscordEmbed(
+        dc.DiscordEmbed(
             f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
             f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
                 })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
@@ -123,7 +123,7 @@ def totd_warrior() -> bool:
 
     execute_warrior(
         os.environ['DCWH_TM_WARRIOR_UPDATES'],
-        discord_webhook.DiscordEmbed(
+        dc.DiscordEmbed(
             f'Track of the Day {map['date']}',
             f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
             color=COLOR_WARRIOR
@@ -148,7 +148,7 @@ def weekly(tokens: dict) -> bool:
 
         execute_schedule(
             os.environ['DCWH_TM_WEEKLY_UPDATES'],
-            discord_webhook.DiscordEmbed(
+            dc.DiscordEmbed(
                 f'Week {map['week']}, Map {map['number']}',
                 f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
                     })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
@@ -171,7 +171,7 @@ def weekly_warriors() -> bool:
     for map in maps:
         execute_warrior(
             os.environ['DCWH_TM_WARRIOR_UPDATES'],
-            discord_webhook.DiscordEmbed(
+            dc.DiscordEmbed(
                 f'Weekly Short #{map['number']}',
                 f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=COLOR_WARRIOR

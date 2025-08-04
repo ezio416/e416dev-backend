@@ -5,7 +5,7 @@ import json
 import os
 import traceback as tb
 
-import discord_webhook
+import discord_webhook as dc
 
 import utils
 
@@ -57,7 +57,7 @@ def error(e: Exception, silent: bool = False) -> None:
         content = f'<@&1205257336252534814> `eid-{id(e)}`\n`{utils.now(False)}`\n```py\n{\
             '\n'.join(root_stack)}\n{'\n'.join(tb_stack[1:-1])}````{tb_stack[-1]}`'
 
-        webhook = discord_webhook.DiscordWebhook(
+        webhook = dc.DiscordWebhook(
             os.environ['DCWH_SITE_BACKEND_ERRORS'],
             content=content
         )
