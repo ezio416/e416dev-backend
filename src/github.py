@@ -1,16 +1,18 @@
 # c 2025-01-27
 # m 2025-08-04
 
-from base64 import b64encode
-from hashlib import sha1
+import base64
+import hashlib
+import time
 
-from requests import ConnectionError, get, put
+import requests
 
-from errors import safelogged
-from utils import *
+from constants import *
+import errors
+import utils
 
 
-@safelogged()
+@errors.safelogged()
 def to_github() -> None:
     base_url = 'https://api.github.com/repos/ezio416/tm-json/contents'
     headers = {
@@ -20,8 +22,8 @@ def to_github() -> None:
     }
 
     time.sleep(WAIT_TIME)
-    log('info: getting info from Github')
-    req = get(base_url, headers=headers)
+    utils.log('info: getting info from Github')
+    req = requests.get(base_url, headers=headers)
     contents = req.json()
 
     for file in (
@@ -39,25 +41,25 @@ def to_github() -> None:
             file_data = f.read()
 
         basename = os.path.basename(file)
-        sha = sha1(f'blob {len(file_data)}\x00{file_data}'.encode()).hexdigest()
+        sha = hashlib.sha1(f'blob {len(file_data)}\x00{file_data}'.encode()).hexdigest()
 
         for item in contents:
             if basename != item['name'] or sha == item['sha']:
                 continue
 
             time.sleep(WAIT_TIME)
-            log(f'info: sending to Github: {basename}')
-            sent = put(
+            utils.log(f'info: sending to Github: {basename}')
+            sent = requests.put(
                 f'{base_url}/{basename}',
                 headers=headers,
                 json={
-                    'content': b64encode(file_data.encode()).decode(),
-                    'message': now(False),
+                    'content': base64.b64encode(file_data.encode()).decode(),
+                    'message': utils.now(False),
                     'sha': item['sha']
                 }
             )
 
             if sent.status_code == 200:
-                log(f'info: sent {basename}')
+                utils.log(f'info: sent {basename}')
             else:
                 raise ConnectionError(f'error: bad send req ({sent.status_code}) for "{basename}": {sent.text}')

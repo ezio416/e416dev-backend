@@ -1,13 +1,13 @@
 # c 2025-01-27
-# m 2025-03-02
+# m 2025-08-04
 
-from datetime import datetime as dt
+import datetime
 import re
 import time
 
 from pytz import timezone as tz
 
-from globals import *
+from constants import *
 
 
 def calc_warrior_time(author_time: int, world_record: int, factor: float | None = 0.25) -> int:
@@ -29,20 +29,24 @@ def calc_warrior_time(author_time: int, world_record: int, factor: float | None 
     )
 
 
+def days_to_seconds(days: int) -> int:
+    return days * SECONDS_IN_DAY
+
+
 def format_long_time(input_s: int) -> str:
     sec = int(input_s)
 
-    week = int(sec / 604_800)
-    sec -= week * 604_800
+    week = int(sec / SECONDS_IN_WEEK)
+    sec -= week * SECONDS_IN_WEEK
 
-    day = int(sec / 86_400)
-    sec -= day * 86_400
+    day = int(sec / SECONDS_IN_DAY)
+    sec -= day * SECONDS_IN_DAY
 
-    hour = int(sec / 3_600)
-    sec -= hour * 3_600
+    hour = int(sec / SECONDS_IN_HOUR)
+    sec -= hour * SECONDS_IN_HOUR
 
-    min = int(sec / 60)
-    sec -= min * 60
+    min = int(sec / SECONDS_IN_MINUTE)
+    sec -= min * SECONDS_IN_MINUTE
 
     ret = ''
     if week:
@@ -64,6 +68,10 @@ def format_race_time(input_ms: int) -> str:
     return f'{min}:{str(sec).zfill(2)}.{str(ms).zfill(3)}'
 
 
+def hours_to_seconds(hours: int) -> int:
+    return hours * SECONDS_IN_HOUR
+
+
 def log(msg: str, print_term: bool = True, log_file: bool = True) -> None:
     text = f'{now()} {msg}'
 
@@ -75,10 +83,14 @@ def log(msg: str, print_term: bool = True, log_file: bool = True) -> None:
             f.write(f'{text.encode('unicode-escape').decode('ascii')}\n')
 
 
+def minutes_to_seconds(minutes: int) -> int:
+    return minutes * SECONDS_IN_MINUTE
+
+
 def now(brackets: bool = True) -> str:
-    utc    = dt.now(tz('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-    denver = f'Denver {dt.now(tz('America/Denver')).strftime('%H:%M')}'
-    paris  = f'Paris {dt.now(tz('Europe/Paris')).strftime('%H:%M')}'
+    utc    = datetime.datetime.now(tz('UTC')).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+    denver = f'Denver {datetime.datetime.now(tz('America/Denver')).strftime('%H:%M')}'
+    paris  = f'Paris {datetime.datetime.now(tz('Europe/Paris')).strftime('%H:%M')}'
     return f'{'[' if brackets else ''}{utc} ({denver}, {paris}){']' if brackets else ''}'
 
 
@@ -88,3 +100,7 @@ def stamp() -> int:
 
 def strip_format_codes(raw: str) -> str:
     return re.sub(r'\$([0-9a-f]{1,3}|[gimnostuwz<>]|[hlp](\[[^\]]+\])?)', '', raw, flags=re.IGNORECASE).strip()
+
+
+def weeks_to_seconds(weeks: int) -> int:
+    return weeks * SECONDS_IN_WEEK

@@ -1,12 +1,13 @@
 # c 2025-01-27
-# m 2025-02-21
+# m 2025-08-04
 
 import json
+import os
 import traceback as tb
 
-from discord_webhook import DiscordWebhook
+import discord_webhook
 
-from utils import *
+import utils
 
 
 def error(e: Exception, silent: bool = False) -> None:
@@ -50,13 +51,13 @@ def error(e: Exception, silent: bool = False) -> None:
         locals.append(clear_builtins(frame.locals))
     local_data = json.dumps(locals, indent=2, sort_keys=False).encode()
 
-    log(f'error: eid-{id(e)} {tb_stack[-1]}')
+    utils.log(f'error: eid-{id(e)} {tb_stack[-1]}')
 
     if not silent:
-        content = f'<@&1205257336252534814> `eid-{id(e)}`\n`{now(False)}`\n```py\n{\
+        content = f'<@&1205257336252534814> `eid-{id(e)}`\n`{utils.now(False)}`\n```py\n{\
             '\n'.join(root_stack)}\n{'\n'.join(tb_stack[1:-1])}````{tb_stack[-1]}`'
 
-        webhook = DiscordWebhook(
+        webhook = discord_webhook.DiscordWebhook(
             os.environ['DCWH_SITE_BACKEND_ERRORS'],
             content=content
         )
@@ -72,7 +73,7 @@ def safelogged(return_type: type = None, silent: bool = False, do_log: bool = Tr
                 return None
 
             if do_log and not silent:
-                log(f'info: called {func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
+                utils.log(f'info: called {func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
 
             try:
                 return func(*args, **kwargs)

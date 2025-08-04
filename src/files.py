@@ -1,9 +1,13 @@
 # c 2025-01-27
 # m 2025-08-04
 
-from errors import safelogged
-from types import TracebackType
-from utils import *
+import json
+import sqlite3 as sql
+import types
+
+from constants import *
+import errors
+import utils
 
 
 class Cursor:
@@ -21,7 +25,7 @@ class Cursor:
         self.cur.execute('BEGIN')
         return self.cur
 
-    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: TracebackType) -> None:
+    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: types.TracebackType) -> None:
         self.cur.close()
 
         if exc_type is exc_val is exc_tb is None:
@@ -32,7 +36,7 @@ class Cursor:
         self.con.close()
 
 
-@safelogged()
+@errors.safelogged()
 def handle_tops(tops: list[dict], uid: str) -> int:
     with Cursor(FILE_DB) as db:
         db.execute(f'''
@@ -67,7 +71,7 @@ def handle_tops(tops: list[dict], uid: str) -> int:
                 account4,
                 account5
             ) VALUES (
-                "{stamp()}",
+                "{utils.stamp()}",
                 "{uid}",
                 "{tops[0]['score']}",
                 "{tops[1]['score']}",
@@ -85,19 +89,19 @@ def handle_tops(tops: list[dict], uid: str) -> int:
     return tops[0]['score']
 
 
-@safelogged(str, True)
+@errors.safelogged(str, True)
 def read_db_key_val(key: str) -> str:
     with Cursor(FILE_DB) as db:
         return db.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
 
 
-@safelogged(list)
+@errors.safelogged(list)
 def read_table(table: str) -> list[dict]:
     with Cursor(FILE_DB) as db:
         return [dict(item) for item in db.execute(f'SELECT * FROM {table}').fetchall()]
 
 
-@safelogged()
+@errors.safelogged()
 def tables_to_json() -> None:
     for table_name, output_file in (
         ('Seasonal', FILE_SEASONAL),
@@ -109,7 +113,7 @@ def tables_to_json() -> None:
             f.write('\n')
 
 
-@safelogged()
+@errors.safelogged()
 def warriors_to_json() -> None:
     warriors = {}
 
@@ -124,9 +128,9 @@ def warriors_to_json() -> None:
         f.write('\n')
 
 
-@safelogged()
+@errors.safelogged()
 def write_db_key_val(key: str, val) -> None:
     with Cursor(FILE_DB) as db:
         db.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
         db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
-        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{stamp()}")')
+        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{utils.stamp()}")')

@@ -1,64 +1,68 @@
 # c 2025-01-27
 # m 2025-08-04
 
-from discord_webhook import DiscordEmbed, DiscordWebhook
+import time
 
-from api import get_account_name
-from errors import safelogged
-from files import Cursor
-from utils import *
+import discord_webhook
+
+import api
+from constants import *
+import errors
+import files
+import utils
 
 
-def execute_schedule(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> None:
-    embed_str: str = f'{MEDAL_AUTHOR} {format_race_time(map['authorTime'])}'
-    embed_str += f'\n{MEDAL_GOLD} {format_race_time(map['goldTime'])}'
-    embed_str += f'\n{MEDAL_SILVER} {format_race_time(map['silverTime'])}'
-    embed_str += f'\n{MEDAL_BRONZE} {format_race_time(map['bronzeTime'])}'
+def execute_schedule(url: str, embed: discord_webhook.DiscordEmbed, map: dict) -> None:
+    embed_str: str = f'{MEDAL_AUTHOR} {utils.format_race_time(map['authorTime'])}'
+    embed_str += f'\n{MEDAL_GOLD} {utils.format_race_time(map['goldTime'])}'
+    embed_str += f'\n{MEDAL_SILVER} {utils.format_race_time(map['silverTime'])}'
+    embed_str += f'\n{MEDAL_BRONZE} {utils.format_race_time(map['bronzeTime'])}'
     embed.add_embed_field('Medals', embed_str, False)
 
     embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
 
+    webhook = discord_webhook.DiscordWebhook(url)
     webhook.add_embed(embed)
     time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
 
 
-def execute_warrior(webhook: DiscordWebhook, embed: DiscordEmbed, map: dict) -> None:
+def execute_warrior(url: str, embed: discord_webhook.DiscordEmbed, map: dict) -> None:
     at: int = map['authorTime']
     wm: int = map['warriorTime']
     wr: int = map['worldRecord']
 
     if wr <= wm:
-        embed_str: str = f'🥇 {format_race_time(wr)}'
-        embed_str += f'\n{MEDAL_WARRIOR} **{format_race_time(wm)}** *(+{format_race_time(wm - wr)})*'
-        embed_str += f'\n{MEDAL_AUTHOR} {format_race_time(at)} *(+{format_race_time(at - wm)})*'
+        embed_str: str = f'🥇 {utils.format_race_time(wr)}'
+        embed_str += f'\n{MEDAL_WARRIOR} **{utils.format_race_time(wm)}** *(+{utils.format_race_time(wm - wr)})*'
+        embed_str += f'\n{MEDAL_AUTHOR} {utils.format_race_time(at)} *(+{utils.format_race_time(at - wm)})*'
 
     else:
-        embed_str: str = f'{MEDAL_WARRIOR} **{format_race_time(wm)}**'
-        embed_str += f'\n{MEDAL_AUTHOR} {format_race_time(at)} *(+{format_race_time(at - wm)})*'
-        embed_str += f'\n🥇 {format_race_time(wr)} *(+{format_race_time(wr - at)})*'
+        embed_str: str = f'{MEDAL_WARRIOR} **{utils.format_race_time(wm)}**'
+        embed_str += f'\n{MEDAL_AUTHOR} {utils.format_race_time(at)} *(+{utils.format_race_time(at - wm)})*'
+        embed_str += f'\n🥇 {utils.format_race_time(wr)} *(+{utils.format_race_time(wr - at)})*'
 
     embed.add_embed_field('Times', embed_str, False)
 
+    webhook = discord_webhook.DiscordWebhook(url)
     webhook.add_embed(embed)
     time.sleep(DISCORD_WAIT_TIME)
     webhook.execute()
-    pass
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def webhook_seasonal(tokens: dict) -> bool:
     maps: list[dict] = []
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
             maps.append(dict(entry))
 
     for map in maps:
         execute_schedule(
-            DiscordWebhook(os.environ['DCWH_TM_SEASONAL_UPDATES']),
-            DiscordEmbed(
-                strip_format_codes(map['name']),
+            os.environ['DCWH_TM_SEASONAL_UPDATES'],
+            discord_webhook.DiscordEmbed(
+                utils.strip_format_codes(map['name']),
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=CAMPAIGN_SERIES[int(map['mapIndex'] / 5)]
             ),
@@ -68,18 +72,18 @@ def webhook_seasonal(tokens: dict) -> bool:
     return True
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def webhook_seasonal_warriors() -> bool:
     maps: list[dict] = []
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM WarriorSeasonal ORDER BY campaignId DESC, name ASC;').fetchmany(25):
             maps.append(dict(entry))
 
     for map in maps:
         execute_warrior(
-            DiscordWebhook(os.environ['DCWH_TM_WARRIOR_UPDATES']),
-            DiscordEmbed(
+            os.environ['DCWH_TM_WARRIOR_UPDATES'],
+            discord_webhook.DiscordEmbed(
                 f'{map['name']}',
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=COLOR_WARRIOR
@@ -90,19 +94,19 @@ def webhook_seasonal_warriors() -> bool:
     return True
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def webhook_totd(tokens: dict) -> bool:
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
-    if not (account_name := get_account_name(tokens, map['author'])):
+    if not (account_name := api.get_account_name(tokens, map['author'])):
         raise ValueError(f'no account name for {map['author']}')
 
     execute_schedule(
-        DiscordWebhook(os.environ['DCWH_TM_TOTD_UPDATES']),
-        DiscordEmbed(
+        os.environ['DCWH_TM_TOTD_UPDATES'],
+        discord_webhook.DiscordEmbed(
             f'{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}',
-            f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
+            f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
                 })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
             color='00CCFF'
         ),
@@ -112,16 +116,16 @@ def webhook_totd(tokens: dict) -> bool:
     return True
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def webhook_totd_warrior() -> bool:
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
 
     execute_warrior(
-        DiscordWebhook(os.environ['DCWH_TM_WARRIOR_UPDATES']),
-        DiscordEmbed(
+        os.environ['DCWH_TM_WARRIOR_UPDATES'],
+        discord_webhook.DiscordEmbed(
             f'Track of the Day {map['date']}',
-            f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
+            f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
             color=COLOR_WARRIOR
         ),
         map
@@ -130,23 +134,23 @@ def webhook_totd_warrior() -> bool:
     return True
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def webhook_weekly(tokens: dict) -> bool:
     maps: list[dict] = []
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(5):
             maps.append(dict(entry))
 
     for map in maps:
-        if not (account_name := get_account_name(tokens, map['author'])):
+        if not (account_name := api.get_account_name(tokens, map['author'])):
             raise ValueError(f'no account name for {map['author']}')
 
         execute_schedule(
-            DiscordWebhook(os.environ['DCWH_TM_WEEKLY_UPDATES']),
-            DiscordEmbed(
+            os.environ['DCWH_TM_WEEKLY_UPDATES'],
+            discord_webhook.DiscordEmbed(
                 f'Week {map['week']}, Map {map['number']}',
-                f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
+                f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
                     })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
                 color=CAMPAIGN_SERIES[map['mapIndex']]
             ),
@@ -156,20 +160,20 @@ def webhook_weekly(tokens: dict) -> bool:
     return True
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def webhook_weekly_warriors() -> bool:
     maps: list[dict] = []
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in reversed(db.execute('SELECT * FROM WarriorWeekly ORDER BY number DESC').fetchmany(5)):
             maps.append(dict(entry))
 
     for map in maps:
         execute_warrior(
-            DiscordWebhook(os.environ['DCWH_TM_WARRIOR_UPDATES']),
-            DiscordEmbed(
+            os.environ['DCWH_TM_WARRIOR_UPDATES'],
+            discord_webhook.DiscordEmbed(
                 f'Weekly Short #{map['number']}',
-                f'[{strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
+                f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=COLOR_WARRIOR
             ),
             map

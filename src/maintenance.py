@@ -2,20 +2,21 @@
 # m 2025-08-04
 
 import csv
-from datetime import timezone
+import datetime
+import time
 
-from nadeo_api import live
-from requests import post
+from nadeo_api import core, live
+import requests
 
-from api import *
-from files import *
-from github import *
-from utils import *
-from webhooks import *
+import api
+from constants import *
+import files
+import github
+import utils
 
 
 def add_campaign_ids_and_weeks_to_weekly_warriors() -> None:
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute(f'SELECT * from Weekly').fetchall():
             map = dict(entry)
             db.execute(f'UPDATE WarriorWeekly SET campaignId = "{map['campaignId']}" where mapUid = "{map['mapUid']}"')
@@ -26,10 +27,10 @@ def add_campaign_ids_and_weeks_to_weekly_warriors() -> None:
 
 def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0.5) -> None:
     # tokens = get_tokens()
-    tokens = {'live': get_token_live()}
+    tokens = {'live': api.get_token_live()}
     maps = get_tops_for_club_campaign(tokens, club_id, campaign_id, factor)
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for i, map in enumerate(maps):
             uid = map['uid']
 
@@ -67,14 +68,14 @@ def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0
 
 
 def add_gold_times_to_warriors() -> None:
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         # for table_name in 'Seasonal', 'Totd', 'Weekly':
         #     for entry in db.execute(f'SELECT * FROM {table_name}').fetchall():
         #         map = dict(entry)
         #         db.execute(f'UPDATE Warrior{table_name} SET goldTime = {map['goldTime']} WHERE mapUid = "{map['mapUid']}"')
 
         MAX_UIDS = 291
-        token= get_token_core()
+        token= api.get_token_core()
 
         maps = {}
         for entry in db.execute(f'SELECT * from WarriorOther').fetchall():
@@ -100,9 +101,9 @@ def add_gold_times_to_warriors() -> None:
 
 def add_map_ids_to_warriors() -> None:
     MAX_UIDS = 291
-    token= get_token_core()
+    token= api.get_token_core()
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for table_table in 'Other', 'Seasonal', 'Totd', 'Weekly':
             table_name = f'Warrior{table_table}'
 
@@ -132,7 +133,7 @@ def add_map_ids_to_warriors() -> None:
 
 
 def display_db_epoch_vals() -> None:
-    table = read_table('KeyVals')
+    table = files.read_table('KeyVals')
 
     stage2 = []
     for i, _ in enumerate(table):
@@ -141,11 +142,11 @@ def display_db_epoch_vals() -> None:
     stage3 = sorted(stage2, key=lambda pair: pair[1])
 
     for key, val in stage3:
-        diff = val - stamp()
+        diff = val - utils.stamp()
         print(
             f'{key:<16}',
-            f'{dt.fromtimestamp(int(val), timezone.utc).strftime('%Y-%m-%d %H:%M:%Sz')}',
-            f'({'in ' if diff > 0 else ''}{format_long_time(abs(diff))}{' ago' if diff <= 0 else ''})'
+            f'{datetime.datetime.fromtimestamp(int(val), datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%Sz')}',
+            f'({'in ' if diff > 0 else ''}{utils.format_long_time(abs(diff))}{' ago' if diff <= 0 else ''})'
         )
 
 
@@ -201,7 +202,7 @@ def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, fac
         )
 
         map['wr'] = top['tops'][0]['top'][0]['score']
-        map['wm'] = calc_warrior_time(map['at'], map['wr'], factor)
+        map['wm'] = utils.calc_warrior_time(map['at'], map['wr'], factor)
 
     return maps
 
@@ -224,7 +225,7 @@ def process_u10s() -> None:
 
     maps = load_csv()
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for map in maps:
             db.execute(f'''
                 INSERT INTO WarriorOther (
@@ -256,7 +257,7 @@ def process_u10s() -> None:
 
 
 def test_club_campaign_error() -> None:
-    tokens = get_tokens()
+    tokens = api.get_tokens()
 
     req = live.get(
         tokens['live'],
@@ -267,8 +268,8 @@ def test_club_campaign_error() -> None:
 
 
 def test_secret_times() -> None:
-    token = get_token_oauth()
-    req = post(
+    token = api.get_token_oauth()
+    req = requests.post(
         'https://trackmania.com/tracks/ZZeF_oCW5MvMrMhJ2dYMirxOc60',
         f'top_secret%5BthresholdScore%5D=29872&top_secret%5B_token%5D={token.access_token}'
     )
@@ -281,14 +282,14 @@ def test_unicode_encode_error() -> None:
     with open('locals.txt', 'a', newline='\n') as f:
         f.write(f'{s.encode('unicode-escape').decode('ascii')}\n')
 
-    log(s)
+    utils.log(s)
     # with open('locals.txt', 'ab') as f:
     #     f.write(s.encode())
 
 
 def warriors_to_github() -> None:
-    warriors_to_json()
-    to_github()
+    files.warriors_to_json()
+    github.to_github()
 
 
 if __name__ == '__main__':
@@ -296,7 +297,7 @@ if __name__ == '__main__':
     # test_unicode_encode_error()
     # test_club_campaign_error()
     # print(webhook_seasonal(None))
-    print(calc_warrior_time(18518, 14811, 0.5))
+    print(utils.calc_warrior_time(18518, 14811, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # add_map_ids_to_warriors()

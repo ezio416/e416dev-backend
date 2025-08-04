@@ -1,10 +1,13 @@
 # c 2025-01-27
 # m 2025-08-04
 
-import json
 import os
-import sqlite3 as sql
 
+
+SECONDS_IN_MINUTE: int = 60
+SECONDS_IN_HOUR:   int = 3_600
+SECONDS_IN_DAY:    int = 86_400
+SECONDS_IN_WEEK:   int = 604_800
 
 CAMPAIGN_SERIES:   tuple[str] = 'FFFFFF', '66FF66', '6666FF', 'FF4444', '666666'
 DISCORD_WAIT_TIME: float      = 1.0
