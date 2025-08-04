@@ -29,7 +29,7 @@ def tm_calc_warrior_time():
 def tm_get_warrior_time():
     uid = flask.request.args.get('uid', None, str)
 
-    if uid and len(uid) in (26, 27):
+    if uid and 24 <= len(uid) <= 27:
         with files.Cursor(FILE_DB) as db:
             for table in ('Totd', 'Weekly', 'Seasonal', 'Other'):  # check largest tables first
                 try:
