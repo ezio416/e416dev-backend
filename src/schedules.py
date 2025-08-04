@@ -15,7 +15,7 @@ import utils
 
 
 @errors.safelogged(bool)
-def schedule_seasonal_maps(tokens: dict) -> bool:
+def seasonal(tokens: dict) -> bool:
     time.sleep(WAIT_TIME)
     maps_seasonal: dict = live.maps_campaign(tokens['live'], 99)
 
@@ -101,7 +101,7 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def schedule_seasonal_warriors(tokens: dict) -> bool:
+def seasonal_warriors(tokens: dict) -> bool:
     maps: dict = {}
 
     with files.Cursor(FILE_DB) as db:
@@ -165,7 +165,7 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def schedule_totd_maps(tokens: dict) -> bool:
+def totd(tokens: dict) -> bool:
     time.sleep(WAIT_TIME)
     maps_totd: dict = live.maps_totd(tokens['live'], 99)
 
@@ -250,7 +250,7 @@ def schedule_totd_maps(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def schedule_totd_warrior(tokens: dict) -> bool:
+def totd_warrior(tokens: dict) -> bool:
     with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
@@ -308,7 +308,7 @@ def schedule_totd_warrior(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def schedule_weekly_maps(tokens: dict) -> bool:
+def weekly(tokens: dict) -> bool:
     time.sleep(WAIT_TIME)
     maps_weekly: dict = live.get(tokens['live'], 'api/campaign/weekly-shorts?length=99')
 
@@ -386,7 +386,7 @@ def schedule_weekly_maps(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def schedule_weekly_warriors(tokens: dict) -> bool:
+def weekly_warriors(tokens: dict) -> bool:
     maps: dict = {}
 
     with files.Cursor(FILE_DB) as db:

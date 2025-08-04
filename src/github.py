@@ -13,7 +13,7 @@ import utils
 
 
 @errors.safelogged()
-def to_github() -> None:
+def send() -> None:
     base_url = 'https://api.github.com/repos/ezio416/tm-json/contents'
     headers = {
         'Accept': 'application/vnd.github+json',

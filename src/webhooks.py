@@ -51,7 +51,7 @@ def execute_warrior(url: str, embed: discord_webhook.DiscordEmbed, map: dict) ->
 
 
 @errors.safelogged(bool)
-def webhook_seasonal(tokens: dict) -> bool:
+def seasonal(tokens: dict) -> bool:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -73,7 +73,7 @@ def webhook_seasonal(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def webhook_seasonal_warriors() -> bool:
+def seasonal_warriors() -> bool:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -95,7 +95,7 @@ def webhook_seasonal_warriors() -> bool:
 
 
 @errors.safelogged(bool)
-def webhook_totd(tokens: dict) -> bool:
+def totd(tokens: dict) -> bool:
     with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
@@ -117,7 +117,7 @@ def webhook_totd(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def webhook_totd_warrior() -> bool:
+def totd_warrior() -> bool:
     with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
 
@@ -135,7 +135,7 @@ def webhook_totd_warrior() -> bool:
 
 
 @errors.safelogged(bool)
-def webhook_weekly(tokens: dict) -> bool:
+def weekly(tokens: dict) -> bool:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -161,7 +161,7 @@ def webhook_weekly(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def webhook_weekly_warriors() -> bool:
+def weekly_warriors() -> bool:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:

@@ -27,20 +27,20 @@ def backend() -> None:
                 token.refresh()
 
         if any((
-            schedules.schedule(tokens, 'next_seasonal', schedules.schedule_seasonal_maps, 'Seasonal', webhooks.webhook_seasonal),
-            schedules.schedule(tokens, 'next_totd',     schedules.schedule_totd_maps,     'Totd',     webhooks.webhook_totd),
-            schedules.schedule(tokens, 'next_weekly',   schedules.schedule_weekly_maps,   'Weekly',   webhooks.webhook_weekly)
+            schedules.schedule(tokens, 'next_seasonal', schedules.seasonal, 'Seasonal', webhooks.seasonal),
+            schedules.schedule(tokens, 'next_totd',     schedules.totd,     'Totd',     webhooks.totd),
+            schedules.schedule(tokens, 'next_weekly',   schedules.weekly,   'Weekly',   webhooks.weekly)
         )):
             files.tables_to_json()
-            github.to_github()
+            github.send()
 
         if any((
-            schedules.schedule_warriors(tokens, 'warrior_seasonal', schedules.schedule_seasonal_warriors, webhooks.webhook_seasonal_warriors),
-            schedules.schedule_warriors(tokens, 'warrior_totd',     schedules.schedule_totd_warrior,      webhooks.webhook_totd_warrior),
-            schedules.schedule_warriors(tokens, 'warrior_weekly',   schedules.schedule_weekly_warriors,   webhooks.webhook_weekly_warriors),
+            schedules.schedule_warriors(tokens, 'warrior_seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors),
+            schedules.schedule_warriors(tokens, 'warrior_totd',     schedules.totd_warrior,      webhooks.totd_warrior),
+            schedules.schedule_warriors(tokens, 'warrior_weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors),
         )):
             files.warriors_to_json()
-            github.to_github()
+            github.send()
 
 
 if __name__ == '__main__':

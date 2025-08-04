@@ -289,7 +289,7 @@ def test_unicode_encode_error() -> None:
 
 def warriors_to_github() -> None:
     files.warriors_to_json()
-    github.to_github()
+    github.send()
 
 
 if __name__ == '__main__':
