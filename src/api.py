@@ -2,7 +2,6 @@
 # m 2025-08-05
 
 import datetime
-import time
 
 from nadeo_api import auth, core, oauth
 
@@ -30,14 +29,11 @@ def get_account_name(tokens: dict, account_id: str) -> str:
     req: dict = {}
 
     try:
-        time.sleep(NADEO_WAIT_TIME)
-        req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+        req = oauth.get_account_names_from_ids(tokens['oauth'], [account_id])
 
     except ValueError:
         tokens['oauth'] = get_token_oauth()
-
-        time.sleep(NADEO_WAIT_TIME)
-        req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+        req = oauth.get_account_names_from_ids(tokens['oauth'], [account_id])
 
     if not req or type(req) is not dict:
         raise ValueError(f'bad account ID: {account_id}')
@@ -52,44 +48,27 @@ def get_account_name(tokens: dict, account_id: str) -> str:
 
 @errors.safelogged(bool)
 def get_map_infos(tokens: dict, table: str) -> bool:
-    UID_LIMIT: int = 270
-
     maps_by_uid: dict = {}
-    uid_groups:  list = []
-    uids:        list = []
 
     with files.Cursor(FILE_DB) as db:
         for entry in db.execute(f'SELECT * FROM {table}').fetchall():
             map: dict = dict(entry)
             maps_by_uid[map['mapUid']] = map
 
-    uids = list(maps_by_uid)
-    while True:
-        if len(uids) > UID_LIMIT:
-            uid_groups.append(','.join(uids[:UID_LIMIT]))
-            uids = uids[UID_LIMIT:]
-        else:
-            uid_groups.append(','.join(uids))
-            break
+    info: list[dict] = core.get_map_info(tokens['core'], list(maps_by_uid))
 
-    for i, group in enumerate(uid_groups):
-        utils.log(f'info: get_map_info {i + 1}/{len(uid_groups)} groups...')
+    for entry in info:
+        map: dict = maps_by_uid[entry['mapUid']]
 
-        time.sleep(NADEO_WAIT_TIME)
-        info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
-
-        for entry in info:
-            map: dict = maps_by_uid[entry['mapUid']]
-
-            map['author']          = entry['author']
-            map['authorTime']      = entry['authorScore']
-            map['bronzeTime']      = entry['bronzeScore']
-            map['goldTime']        = entry['goldScore']
-            map['mapId']           = entry['mapId']
-            map['name']            = entry['name']
-            map['silverTime']      = entry['silverScore']
-            map['submitter']       = entry['submitter']
-            map['timestampUpload'] = int(datetime.datetime.fromisoformat(entry['timestamp']).timestamp())
+        map['author']          = entry['author']
+        map['authorTime']      = entry['authorScore']
+        map['bronzeTime']      = entry['bronzeScore']
+        map['goldTime']        = entry['goldScore']
+        map['mapId']           = entry['mapId']
+        map['name']            = entry['name']
+        map['silverTime']      = entry['silverScore']
+        map['submitter']       = entry['submitter']
+        map['timestampUpload'] = int(datetime.datetime.fromisoformat(entry['timestamp']).timestamp())
 
     with files.Cursor(FILE_DB) as db:
         for uid, map in maps_by_uid.items():

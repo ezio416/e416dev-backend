@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
 import os
 
@@ -18,7 +18,6 @@ MEDAL_BRONZE:      str        = '<:MedalBronze:736600847630336060>'
 MEDAL_GOLD:        str        = '<:MedalGold:736600847588261988>'
 MEDAL_SILVER:      str        = '<:MedalSilver:736600847454175363>'
 MEDAL_WARRIOR:     str        = '<:MedalWarrior:1305798298690392155>'
-NADEO_WAIT_TIME:   float      = 0.5
 
 DIR_PARENT:        str = f'{os.path.dirname(__file__).replace('\\', '/')}/..'
 DIR_DATA:          str = f'{DIR_PARENT}/data'

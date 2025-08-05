@@ -1,8 +1,10 @@
 # c 2024-12-26
-# m 2025-08-04
+# m 2025-08-05
 
 import multiprocessing
 import time
+
+import nadeo_api
 
 import api
 import api_provider
@@ -15,6 +17,9 @@ import webhooks
 
 def backend() -> None:
     tokens: dict = api.get_tokens()
+
+    nadeo_api.debug_logging = True
+    nadeo_api.wait_between_requests_ms = 500
 
     while True:
         time.sleep(1)
