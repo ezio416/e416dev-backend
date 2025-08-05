@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
 import datetime
 import re
@@ -48,7 +48,7 @@ def format_long_time(input_s: int) -> str:
     min = int(sec / SECONDS_IN_MINUTE)
     sec -= min * SECONDS_IN_MINUTE
 
-    ret = ''
+    ret: str = ''
     if week:
         ret += f'{week}w'
     if day:
@@ -73,7 +73,7 @@ def hours_to_seconds(hours: int) -> int:
 
 
 def log(msg: str, print_term: bool = True, log_file: bool = True) -> None:
-    text = f'{now()} {msg}'
+    text: str = f'{now()} {msg}'
 
     if print_term:
         print(text, end='\r' if text.endswith(')] loop') else '\n')
@@ -88,11 +88,11 @@ def minutes_to_seconds(minutes: int) -> int:
 
 
 def now(brackets: bool = True, thousandths: bool = True) -> str:
-    utc    = datetime.datetime.now(pytz.timezone('UTC')).strftime(f'%Y-%m-%d %H:%M:%S{'.%f' if thousandths else ''}')
+    utc: str    = datetime.datetime.now(pytz.timezone('UTC')).strftime(f'%Y-%m-%d %H:%M:%S{'.%f' if thousandths else ''}')
     if thousandths:
         utc = utc[:-3]
-    denver = f'Denver {datetime.datetime.now(pytz.timezone('America/Denver')).strftime('%H:%M')}'
-    paris  = f'Paris {datetime.datetime.now(pytz.timezone('Europe/Paris')).strftime('%H:%M')}'
+    denver: str = f'Denver {datetime.datetime.now(pytz.timezone('America/Denver')).strftime('%H:%M')}'
+    paris: str  = f'Paris {datetime.datetime.now(pytz.timezone('Europe/Paris')).strftime('%H:%M')}'
     return f'{'[' if brackets else ''}{utc} ({denver}, {paris}){']' if brackets else ''}'
 
 

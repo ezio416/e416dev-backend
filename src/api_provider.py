@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-08-04
+# m 2025-08-05
 
 import flask
 
@@ -13,10 +13,10 @@ provider = flask.Flask(__name__)
 
 @provider.route('/tm/calc_warrior_time')
 @provider.route('/tm/calc_warrior_time/')
-def tm_calc_warrior_time():
-    at = flask.request.args.get('at', None, int)
-    wr = flask.request.args.get('wr', None, int)
-    factor = flask.request.args.get('factor', None, float)
+def tm_calc_warrior_time() -> list[int]:
+    at: None | int = flask.request.args.get('at', None, int)
+    wr: None | int = flask.request.args.get('wr', None, int)
+    factor: None | float = flask.request.args.get('factor', None, float)
 
     if all((at, wr, factor)):
         return [utils.calc_warrior_time(at, wr, factor)]
@@ -27,13 +27,13 @@ def tm_calc_warrior_time():
 @provider.route('/tm/get_warrior_time')
 @provider.route('/tm/get_warrior_time/')
 def tm_get_warrior_time():
-    uid = flask.request.args.get('uid', None, str)
+    uid: None | str = flask.request.args.get('uid', None, str)
 
     if uid and 24 <= len(uid) <= 27:
         with files.Cursor(FILE_DB) as db:
             for table in ('Totd', 'Weekly', 'Seasonal', 'Other'):  # check largest tables first
                 try:
-                    ret = dict(db.execute(f'SELECT * FROM Warrior{table} WHERE mapUid = "{uid}"').fetchone())
+                    ret: dict = dict(db.execute(f'SELECT * FROM Warrior{table} WHERE mapUid = "{uid}"').fetchone())
                     ret['type'] = table
                     return ret
 

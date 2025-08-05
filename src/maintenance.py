@@ -159,23 +159,22 @@ def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, fac
         f'api/token/club/{club_id}/campaign/{campaign_id}'
     )
 
-    club_name = req['clubName']
+    club_name: str = req['clubName']
     campaign = req['campaign']
-    campaign_name = campaign['name']
-    uids = []
+    campaign_name: str = campaign['name']
+    uids: list = []
 
     for entry in campaign['playlist']:
         uids.append(entry['mapUid'])
 
     print(f'getting info for club {club_id}, campaign {campaign_id}')
 
-    time.sleep(0.5)
-    info = live.get(
+    info: dict = live.get(
         tokens['live'],
         f'api/token/map/get-multiple?mapUidList={'%2C'.join(uids)}'
     )
 
-    maps = []
+    maps: list = []
 
     for entry in info['mapList']:
         maps.append({
@@ -191,7 +190,7 @@ def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, fac
         })
 
     for map in maps:
-        uid = map['uid']
+        uid: str = map['uid']
 
         print(f'getting top for map {uid}')
 

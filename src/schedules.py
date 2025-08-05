@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
 import json
 import time
@@ -106,7 +106,7 @@ def seasonal_warriors(tokens: dict) -> bool:
 
     with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
-            map = dict(entry)
+            map: dict = dict(entry)
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
