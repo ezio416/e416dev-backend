@@ -18,7 +18,6 @@ import webhooks
 def backend() -> None:
     tokens: dict = api.get_tokens()
 
-    nadeo_api.debug_logging = True
     nadeo_api.wait_between_requests_ms = 500
 
     while True:

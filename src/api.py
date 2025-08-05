@@ -121,7 +121,7 @@ def get_token_oauth() -> auth.Token:
     )
 
 
-def get_tokens() -> dict:
+def get_tokens() -> dict[str, auth.Token]:
     return {
         'core': get_token_core(),
         'live': get_token_live(),

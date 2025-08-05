@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
 import json
 import sqlite3 as sql
@@ -16,12 +16,12 @@ class Cursor:
     '''
 
     def __init__(self, path: str) -> None:
-        self.path = path
+        self.path: str = path
 
-    def __enter__(self):
-        self.con = sql.connect(self.path)
+    def __enter__(self) -> sql.Cursor:
+        self.con: sql.Connection = sql.connect(self.path)
         self.con.row_factory = sql.Row
-        self.cur = self.con.cursor()
+        self.cur: sql.Cursor = self.con.cursor()
         self.cur.execute('BEGIN')
         return self.cur
 
@@ -36,7 +36,7 @@ class Cursor:
         self.con.close()
 
 
-@errors.safelogged()
+@errors.safelogged(int)
 def handle_tops(tops: list[dict], uid: str) -> int:
     with Cursor(FILE_DB) as db:
         db.execute(f'''
@@ -115,7 +115,7 @@ def tables_to_json() -> None:
 
 @errors.safelogged()
 def warriors_to_json() -> None:
-    warriors = {}
+    warriors: dict = {}
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
