@@ -1,7 +1,6 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
-import json
 import time
 
 import discord_webhook as dc
@@ -11,15 +10,6 @@ from constants import *
 import errors
 import files
 import utils
-
-
-def backend_error(url: str, content: str, data: dict = {}) -> None:
-    webhook = dc.DiscordWebhook(url, content=content)
-
-    if data:
-        webhook.add_file(json.dumps(data, indent=4).encode(), 'data.json')
-
-    execute(webhook)
 
 
 def execute(webhook: dc.DiscordWebhook) -> None:

@@ -1,12 +1,15 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
+import json
 import os
+import time
 import traceback as tb
+
+import discord_webhook as dc
 
 from constants import *
 import utils
-import webhooks
 
 
 def add_locals(locals: dict[str, dict[str, str]], frame: tb.FrameSummary) -> dict[str, dict[str, str]]:
@@ -74,7 +77,10 @@ def error(e: Exception, silent: bool = False) -> None:
         for frame in exc.stack:
             locals = add_locals(locals, frame)
 
-        webhooks.backend_error(os.environ['DCWH_SITE_BACKEND_ERRORS'], content, locals)
+        webhook = dc.DiscordWebhook(os.environ['DCWH_SITE_BACKEND_ERRORS'], content=content)
+        webhook.add_file(json.dumps(locals, indent=4).encode(), 'locals.json')
+        time.sleep(DISCORD_WAIT_TIME)
+        webhook.execute()
 
 
 def safelogged(return_type: type = None, silent: bool = False, log: bool = True):
