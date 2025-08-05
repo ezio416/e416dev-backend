@@ -88,7 +88,7 @@ def minutes_to_seconds(minutes: int) -> int:
 
 
 def now(brackets: bool = True, thousandths: bool = True) -> str:
-    utc: str    = datetime.datetime.now(pytz.timezone('UTC')).strftime(f'%Y-%m-%d %H:%M:%S{'.%f' if thousandths else ''}')
+    utc: str = datetime.datetime.now(pytz.timezone('UTC')).strftime(f'%Y-%m-%d %H:%M:%S{'.%f' if thousandths else ''}')
     if thousandths:
         utc = utc[:-3]
     denver: str = f'Denver {datetime.datetime.now(pytz.timezone('America/Denver')).strftime('%H:%M')}'

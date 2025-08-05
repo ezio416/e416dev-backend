@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-04
+# m 2025-08-05
 
 import datetime
 import time
@@ -17,7 +17,7 @@ accounts: dict[str, dict] = {}
 
 @errors.safelogged(str)
 def get_account_name(tokens: dict, account_id: str) -> str:
-    if account_id == 'd2372a08-a8a1-46cb-97fb-23a161d85ad0':  # todo: add Nadeo. account
+    if account_id in ('d2372a08-a8a1-46cb-97fb-23a161d85ad0', 'aa02b90e-0652-4a1c-b705-4677e2983003'):
         return 'Nadeo'
 
     global accounts
