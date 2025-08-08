@@ -36,7 +36,6 @@ def seasonal(tokens: dict) -> bool:
         f.write('\n')
 
     TABLE: str = 'Seasonal'
-    uids: list[str] = []
 
     with files.Cursor(FILE_DB) as db:
         db.execute(f'DROP TABLE IF EXISTS {TABLE}')
@@ -68,8 +67,6 @@ def seasonal(tokens: dict) -> bool:
             timestampRankingSent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
-                uids.append(map['mapUid'])
-
                 db.execute(f'''
                     INSERT INTO {TABLE} (
                         campaignId,
@@ -167,21 +164,31 @@ def seasonal_warriors(tokens: dict) -> bool:
 
 @errors.safelogged(bool)
 def totd(tokens: dict) -> bool:
+    next_totd: int = files.read_timestamp('next_totd')
+    if 0 < next_totd < MAX_TIMESTAMP:
+        files.write_timestamp('next_warrior_totd', next_totd + utils.hours_to_seconds(2))
+
     maps_totd: dict = live.get_maps_totd(tokens['live'], 144)
 
     if os.path.isfile(FILE_TOTD_RAW):
-        ts: int = utils.stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/totd_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/totd_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
             zip.write(FILE_TOTD_RAW, 'totd_raw.json')
 
     with open(FILE_TOTD_RAW, 'w', newline='\n') as f:
         json.dump(maps_totd, f, indent=4)
         f.write('\n')
 
+    TABLE: str = 'Totd'
+
     with files.Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Totd')
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Totd (
+            CREATE TABLE IF NOT EXISTS {TABLE} (
                 author          CHAR(36),
                 authorTime      INT,
                 bronzeTime      INT,
@@ -209,12 +216,12 @@ def totd(tokens: dict) -> bool:
         for month in reversed(maps_totd['monthList']):
             for map in month['days']:
                 mapUid: str = map['mapUid']
-                if len(mapUid) == 0:
+                if not len(mapUid):
                     break
 
                 number += 1
                 db.execute(f'''
-                    INSERT INTO Totd (
+                    INSERT INTO {TABLE} (
                         campaignId,
                         mapUid,
                         month,
@@ -239,12 +246,17 @@ def totd(tokens: dict) -> bool:
                     )
                 ''')
 
-    last_totd: int = int(files.read_db_key_val('next_totd'))
-    files.write_db_key_val('warrior_totd', last_totd + utils.hours_to_seconds(2))
-    if maps_totd['nextRequestTimestamp'] != -1:
-        files.write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])
+    # different order below from seasonal since 363/365 times the next totd is exactly a day away
+    # better to handle it automatically and only fix manually if it happens to fail around DST
+
+    if not api.get_map_infos(tokens, TABLE):
+        return False
+
+    if maps_totd['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_totd', maps_totd['nextRequestTimestamp'])
     else:
-        files.write_db_key_val('next_totd', last_totd + SECONDS_IN_DAY)
+        files.write_timestamp('next_totd', next_totd + utils.days_to_seconds(1))
+        errors.notify(f'totd nextRequestTimestamp invalid: {maps_totd['nextRequestTimestamp']}')
 
     return True
 

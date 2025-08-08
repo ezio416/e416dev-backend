@@ -95,8 +95,8 @@ def seasonal_warriors() -> bool:
     return True
 
 
-@errors.safelogged(bool)
-def totd(tokens: dict) -> bool:
+@errors.safelogged()
+def totd(tokens: dict) -> None:
     with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
@@ -113,8 +113,6 @@ def totd(tokens: dict) -> bool:
         ),
         map
     )
-
-    return True
 
 
 @errors.safelogged(bool)
