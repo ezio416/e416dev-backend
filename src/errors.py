@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-06
 
 import json
 import os
@@ -81,6 +81,13 @@ def error(e: Exception, silent: bool = False) -> None:
         webhook.add_file(json.dumps(locals, indent=4).encode(), 'locals.json')
         time.sleep(DISCORD_WAIT_TIME)
         webhook.execute()
+
+
+def notify(msg: str) -> None:
+    try:
+        raise Exception(msg)
+    except Exception as e:
+        error(e)
 
 
 def safelogged(return_type: type = None, silent: bool = False, log: bool = True):
