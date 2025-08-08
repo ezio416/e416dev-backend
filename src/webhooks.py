@@ -139,8 +139,8 @@ def totd_warrior() -> bool:
     return True
 
 
-@errors.safelogged(bool)
-def weekly(tokens: dict) -> bool:
+@errors.safelogged()
+def weekly(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -161,8 +161,6 @@ def weekly(tokens: dict) -> bool:
             ),
             map
         )
-
-    return True
 
 
 @errors.safelogged(bool)

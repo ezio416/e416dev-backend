@@ -64,7 +64,7 @@ def seasonal(tokens: dict) -> bool:
         ''')
 
         for i, campaign in enumerate(reversed(maps_seasonal['campaignList'])):
-            timestampRankingSent: int | None = campaign['rankingSentTimestamp']
+            sent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
                 db.execute(f'''
@@ -88,10 +88,13 @@ def seasonal(tokens: dict) -> bool:
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
-                        {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 0},
+                        {f'"{sent}"' if sent else 0},
                         "{campaign['startTimestamp']}"
-                    )
+                    );
                 ''')
+
+    # different order below from totd/weekly since the next totd/weekly is almost always exactly a day/week away
+    # better to handle it automatically and only fix manually if it happens to fail around DST
 
     if maps_seasonal['nextRequestTimestamp'] > 0:
         files.write_timestamp('next_seasonal', maps_seasonal['nextRequestTimestamp'])
@@ -243,11 +246,8 @@ def totd(tokens: dict) -> bool:
                         "{map['startTimestamp']}",
                         "{map['day']}",
                         "{month['year']}"
-                    )
+                    );
                 ''')
-
-    # different order below from seasonal since 363/365 times the next totd is exactly a day away
-    # better to handle it automatically and only fix manually if it happens to fail around DST
 
     if not api.get_map_infos(tokens, TABLE):
         return False
@@ -317,21 +317,31 @@ def totd_warrior(tokens: dict) -> bool:
 
 @errors.safelogged(bool)
 def weekly(tokens: dict) -> bool:
+    next_weekly: int = files.read_timestamp('next_weekly')
+    if 0 < next_weekly < MAX_TIMESTAMP:
+        files.write_timestamp('next_warrior_weekly', next_weekly + utils.hours_to_seconds(2))
+
     maps_weekly: dict = live.get_maps_weekly(tokens['live'], 144)
 
     if os.path.isfile(FILE_WEEKLY_RAW):
-        ts: int = utils.stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/weekly_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/weekly_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
             zip.write(FILE_WEEKLY_RAW, 'weekly_raw.json')
 
     with open(FILE_WEEKLY_RAW, 'w', newline='\n') as f:
         json.dump(maps_weekly, f, indent=4)
         f.write('\n')
 
+    TABLE: str = 'Weekly'
+
     with files.Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Weekly')
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Weekly (
+            CREATE TABLE IF NOT EXISTS {TABLE} (
                 author               CHAR(36),
                 authorTime           INT,
                 bronzeTime           INT,
@@ -356,7 +366,7 @@ def weekly(tokens: dict) -> bool:
         ''')
 
         for campaign in reversed(maps_weekly['campaignList']):
-            timestampRankingSent: int | None = campaign['rankingSentTimestamp']
+            sent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
                 db.execute(f'''
@@ -380,15 +390,22 @@ def weekly(tokens: dict) -> bool:
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
-                        {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
+                        {f'"{sent}"' if sent else 0},
                         "{campaign['startTimestamp']}",
                         "{campaign['week']}",
                         "{campaign['year']}"
-                    )
+                    );
                 ''')
 
-    files.write_db_key_val('warrior_weekly', 0)
-    files.write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
+    if not api.get_map_infos(tokens, TABLE):
+        return False
+
+    if maps_weekly['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_weekly', maps_weekly['nextRequestTimestamp'])
+    else:
+        files.write_timestamp('next_weekly', next_weekly + utils.weeks_to_seconds(1))
+        errors.notify(f'weekly nextRequestTimestamp invalid: {maps_weekly['nextRequestTimestamp']}')
+
     return True
 
 
@@ -477,6 +494,8 @@ def schedule(tokens: dict, table: str, schedule_func, webhook_func) -> bool:
         utils.log(f'{table} schedule FAILURE')
         files.write_timestamp(next_key, MAX_TIMESTAMP)
         files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
+
+    return True
 
 
 @errors.safelogged(bool, log=False)
