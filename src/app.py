@@ -4,7 +4,7 @@
 import multiprocessing
 import time
 
-import nadeo_api
+import nadeo_api.config
 
 import api
 import api_provider
@@ -18,15 +18,15 @@ import webhooks
 def backend() -> None:
     tokens: dict = api.get_tokens()
 
-    nadeo_api.wait_between_requests_ms = 500
+    nadeo_api.config.wait_between_requests_ms = 500
 
     while True:
         time.sleep(1)
-        ts: int = utils.stamp()
+        now: int = utils.stamp()
         utils.log('loop', log_file=False)
 
         for audience, token in tokens.items():  # bandaid
-            if audience != 'oauth' and ts + utils.minutes_to_seconds(15) > token.expiration:
+            if audience != 'oauth' and now + utils.minutes_to_seconds(15) > token.expiration:
                 utils.log(f'warn: {audience} token is 15 minutes to expiry, refreshing...')
                 token.refresh()
 
