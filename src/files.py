@@ -109,7 +109,7 @@ def read_db_key_val(key: str) -> str:
         return db.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
 
 
-@errors.safelogged(list)
+@errors.safelogged(list, log=False)
 def read_table(table: str) -> list[dict]:
     with Cursor(FILE_DB) as db:
         return [dict(item) for item in db.execute(f'SELECT * FROM {table}').fetchall()]
