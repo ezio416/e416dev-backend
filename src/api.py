@@ -1,7 +1,7 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-08
 
-import datetime
+import datetime as dt
 
 from nadeo_api import auth, core, oauth
 
@@ -68,7 +68,7 @@ def get_map_infos(tokens: dict, table: str) -> bool:
         map['name']            = entry['name']
         map['silverTime']      = entry['silverScore']
         map['submitter']       = entry['submitter']
-        map['timestampUpload'] = int(datetime.datetime.fromisoformat(entry['timestamp']).timestamp())
+        map['timestampUpload'] = int(dt.datetime.fromisoformat(entry['timestamp']).timestamp())
 
     with files.Cursor(FILE_DB) as db:
         for uid, map in maps_by_uid.items():

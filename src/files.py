@@ -1,6 +1,7 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-08
 
+import datetime as dt
 import json
 import sqlite3 as sql
 import types
@@ -101,6 +102,12 @@ def read_table(table: str) -> list[dict]:
         return [dict(item) for item in db.execute(f'SELECT * FROM {table}').fetchall()]
 
 
+@errors.safelogged(int, log=False)
+def read_timestamp(key: str) -> int:
+    with Cursor(FILE_DB) as db:
+        return db.execute(f'SELECT * FROM Timestamps WHERE key = "{key}"').fetchone()[1]
+
+
 @errors.safelogged()
 def tables_to_json() -> None:
     for table_name, output_file in (
@@ -134,3 +141,10 @@ def write_db_key_val(key: str, val) -> None:
         db.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
         db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
         db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{utils.stamp()}")')
+
+
+@errors.safelogged()
+def write_timestamp(key: str, ts: int) -> None:
+    with Cursor(FILE_DB) as db:
+        db.execute('CREATE TABLE IF NOT EXISTS Timestamps (key TEXT PRIMARY KEY, ts INT, utc CHAR(19));')
+        db.execute(f'REPLACE INTO Timestamps (key, ts, utc) VALUES ("{key}", "{ts}", "{dt.datetime.fromtimestamp(ts, dt.UTC).strftime('%F %T')}");')
