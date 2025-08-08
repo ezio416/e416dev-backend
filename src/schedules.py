@@ -3,6 +3,7 @@
 
 import json
 import time
+import typing
 import zipfile
 
 from nadeo_api import live
@@ -476,7 +477,7 @@ def weekly_warriors(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool, log=False)
-def schedule(tokens: dict, table: str, schedule_func, webhook_func) -> bool:
+def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None]) -> bool:
     next_key: str = f'next_{table}'
     next: int = files.read_timestamp(next_key)
     retry_key: str = f'retry_{table}'
