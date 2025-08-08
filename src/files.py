@@ -90,6 +90,19 @@ def handle_tops(tops: list[dict], uid: str) -> int:
     return tops[0]['score']
 
 
+def get_next_warrior() -> int:
+    seasonal: int = read_timestamp('next_warrior_seasonal')
+    seasonal = seasonal if seasonal else MAX_TIMESTAMP
+
+    totd: int = read_timestamp('next_warrior_totd')
+    totd = totd if totd else MAX_TIMESTAMP
+
+    weekly: int = read_timestamp('next_warrior_weekly')
+    weekly = weekly if weekly else MAX_TIMESTAMP
+
+    return min(seasonal, totd, weekly)
+
+
 @errors.safelogged(str, True)
 def read_db_key_val(key: str) -> str:
     with Cursor(FILE_DB) as db:
