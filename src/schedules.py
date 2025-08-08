@@ -398,7 +398,7 @@ def weekly_warriors(tokens: dict) -> bool:
 
     with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(10)[5:]:
-            map = dict(entry)
+            map: dict = dict(entry)
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
