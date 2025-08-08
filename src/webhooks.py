@@ -17,12 +17,17 @@ def execute(webhook: dc.DiscordWebhook) -> None:
     webhook.execute()
 
 
-def execute_schedule(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
+def execute_schedule(url: str, embed: dc.DiscordEmbed, map: dict, tmx: dict = {}) -> None:
     embed_str: str = f'{MEDAL_AUTHOR} {utils.format_race_time(map['authorTime'])}'
     embed_str += f'\n{MEDAL_GOLD} {utils.format_race_time(map['goldTime'])}'
     embed_str += f'\n{MEDAL_SILVER} {utils.format_race_time(map['silverTime'])}'
     embed_str += f'\n{MEDAL_BRONZE} {utils.format_race_time(map['bronzeTime'])}'
     embed.add_embed_field('Medals', embed_str, False)
+
+    if tmx:
+        embed.add_embed_field('TMX', f'[{tmx['id']}]({TMX_BASE_URL}/mapshow/{tmx['id']})')
+        if tmx['tags']:
+            embed.add_embed_field('Tags', ', '.join(tmx['tags']))
 
     embed.set_thumbnail(f'https://core.trackmania.nadeo.live/maps/{map['mapId']}/thumbnail.jpg')
 
@@ -111,7 +116,8 @@ def totd(tokens: dict) -> None:
                 })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
             color='00CCFF'
         ),
-        map
+        map,
+        api.get_tmx_info(map['mapUid'])
     )
 
 

@@ -33,3 +33,5 @@ FILE_WEEKLY:       str = f'{DIR_DATA}/weekly.json'
 FILE_WEEKLY_RAW:   str = f'{DIR_DATA}/weekly_raw.json'
 FILE_ZONE:         str = f'{DIR_DATA}/zone.json'
 FILE_ZONE_RAW:     str = f'{DIR_DATA}/zone_raw.json'
+
+TMX_BASE_URL:      str = 'https://trackmania.exchange'

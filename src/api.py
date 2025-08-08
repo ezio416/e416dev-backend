@@ -4,6 +4,7 @@
 import datetime as dt
 
 from nadeo_api import auth, core, oauth
+import requests
 
 from constants import *
 import errors
@@ -88,6 +89,18 @@ def get_map_infos(tokens: dict, table: str) -> bool:
             ''')
 
     return True
+
+
+@errors.safelogged(dict)
+def get_tmx_info(uid: str) -> dict:
+    req: dict = requests.get(f'{TMX_BASE_URL}/api/maps?fields=MapId,Tags&uid={uid}', timeout=5).json()
+    try:
+        return {
+            'id': req['Results'][0]['MapId'],
+            'tags': [tag['Name'] for tag in req['Results'][0]['Tags']]
+        }
+    except Exception:
+        return {}
 
 
 def get_token_core() -> auth.Token:
