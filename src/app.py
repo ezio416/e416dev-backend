@@ -27,7 +27,7 @@ def backend() -> None:
 
         for audience, token in tokens.items():  # bandaid
             if audience != 'oauth' and ts + utils.minutes_to_seconds(15) > token.expiration:
-                utils.log(f'{audience} token is 15 minutes to expiry')
+                utils.log(f'warn: {audience} token is 15 minutes to expiry, refreshing...')
                 token.refresh()
 
         if any((

@@ -21,13 +21,13 @@ HEADERS: dict[str, str] = {
 
 
 def _get_contents() -> list[dict]:
-    utils.log('getting info from Github')
+    utils.log('info: getting info from Github')
     return requests.get(BASE_URL, headers=HEADERS).json()
 
 
 def _send_file(file: str, contents: list[dict]) -> requests.Response:
     if not os.path.isfile(file):
-        print(f'github.send_all(): not found: {file}')
+        utils.log(f'warn: not found: {file}')
         return -1
 
     with open(file) as f:

@@ -487,11 +487,11 @@ def schedule(tokens: dict, table: str, schedule_func, webhook_func) -> bool:
         return False
 
     if schedule_func(tokens):
-        utils.log(f'{table} schedule success')
+        utils.log(f'info: {table} schedule success')
         files.write_timestamp(retry_key, MAX_TIMESTAMP)
         webhook_func(tokens)
     else:
-        utils.log(f'{table} schedule FAILURE')
+        utils.log(f'info: {table} schedule FAILURE')
         files.write_timestamp(next_key, MAX_TIMESTAMP)
         files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
 
