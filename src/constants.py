@@ -1,9 +1,10 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-08
 
 import os
 
 
+MAX_TIMESTAMP:     int = 2_000_000_000
 SECONDS_IN_MINUTE: int = 60
 SECONDS_IN_HOUR:   int = 3_600
 SECONDS_IN_DAY:    int = 86_400

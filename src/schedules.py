@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-08
 
 import json
 import time
@@ -16,28 +16,38 @@ import utils
 
 @errors.safelogged(bool)
 def seasonal(tokens: dict) -> bool:
+    next_seasonal: int = files.read_timestamp('next_seasonal')
+    if 0 < next_seasonal < MAX_TIMESTAMP:
+        files.write_timestamp('next_warrior_seasonal', next_seasonal + utils.weeks_to_seconds(2))
+
     maps_seasonal: dict = live.get_maps_seasonal(tokens['live'], 144)
 
     if os.path.isfile(FILE_SEASONAL_RAW):
-        ts: int = utils.stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/seasonal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/seasonal_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
             zip.write(FILE_SEASONAL_RAW, 'seasonal_raw.json')
 
     with open(FILE_SEASONAL_RAW, 'w', newline='\n') as f:
         json.dump(maps_seasonal, f, indent=4)
         f.write('\n')
 
+    TABLE: str = 'Seasonal'
+    uids: list[str] = []
+
     with files.Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Seasonal')
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Seasonal (
+            CREATE TABLE IF NOT EXISTS {TABLE} (
                 author               CHAR(36),
                 authorTime           INT,
                 bronzeTime           INT,
                 campaignId           INT,
                 campaignIndex        INT,
                 goldTime             INT,
-                leaderboardGroupUid  CHAR(36),
                 mapId                CHAR(36),
                 mapIndex             INT,
                 mapUid               VARCHAR(27) PRIMARY KEY,
@@ -48,7 +58,6 @@ def seasonal(tokens: dict) -> bool:
                 submitter            CHAR(36),
                 timestampEdition     INT,
                 timestampEnd         INT,
-                timestampPublished   INT,
                 timestampRankingSent INT,
                 timestampStart       INT,
                 timestampUpload      INT
@@ -59,44 +68,41 @@ def seasonal(tokens: dict) -> bool:
             timestampRankingSent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
+                uids.append(map['mapUid'])
+
                 db.execute(f'''
-                    INSERT INTO Seasonal (
+                    INSERT INTO {TABLE} (
                         campaignId,
                         campaignIndex,
-                        leaderboardGroupUid,
                         mapIndex,
                         mapUid,
                         number,
                         seasonUid,
                         timestampEdition,
                         timestampEnd,
-                        timestampPublished,
                         timestampRankingSent,
                         timestampStart
                     ) VALUES (
                         "{campaign['id']}",
                         "{i}",
-                        "{campaign['leaderboardGroupUid']}",
                         "{map['position']}",
                         "{map['mapUid']}",
                         "{i * 25 + map['position'] + 1}",
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
-                        "{campaign['publicationTimestamp']}",
-                        {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
+                        {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 0},
                         "{campaign['startTimestamp']}"
                     )
                 ''')
 
-    files.write_db_key_val('warrior_seasonal', int(files.read_db_key_val('next_seasonal')) + utils.weeks_to_seconds(2))
-
-    if maps_seasonal['nextRequestTimestamp'] != -1:
-        files.write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+    if maps_seasonal['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_seasonal', maps_seasonal['nextRequestTimestamp'])
     else:
-        pass
+        files.write_timestamp('next_seasonal', MAX_TIMESTAMP)
+        errors.notify(f'seasonal nextRequestTimestamp invalid: {maps_seasonal['nextRequestTimestamp']}')
 
-    return True
+    return api.get_map_infos(tokens, TABLE)
 
 
 @errors.safelogged(bool)
@@ -440,37 +446,28 @@ def weekly_warriors(tokens: dict) -> bool:
     return True
 
 
-@errors.safelogged(bool, do_log=False)
-def schedule(tokens: dict, key: str, ts: int, schedule_func, table: str, webhook_func) -> bool:
-    val: str = files.read_db_key_val(key)
-    if ts <= (int(val) if len(val) else 0):
+@errors.safelogged(bool, log=False)
+def schedule(tokens: dict, table: str, schedule_func, webhook_func) -> bool:
+    next_key: str = f'next_{table}'
+    next: int = files.read_timestamp(next_key)
+    retry_key: str = f'retry_{table}'
+    retry: int = files.read_timestamp(retry_key)
+
+    now: int = utils.stamp()
+    if now < next and now < retry:
         return False
 
-    tries = 4  # total = this + 1
-    while not (success := schedule_func(tokens)) and tries:
-        utils.log(f'error: {schedule_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
-        tries -= 1
-        time.sleep(5)
-    if not success:
-        files.write_db_key_val(key, ts + utils.minutes_to_seconds(3))
-        raise RuntimeError(f'error: {schedule_func.__name__}(), trying again in 3 minutes')
-
-    tries = 4
-    while not (success := api.get_map_infos(tokens, table)) and tries:
-        utils.log(f'error: get_map_infos({table}), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
-        tries -= 1
-        time.sleep(5)
-    if not success:
-        files.write_db_key_val(key, ts + utils.minutes_to_seconds(3))
-        raise RuntimeError(f'error: get_map_infos({table}), trying again in 3 minutes')
-
-    if not webhook_func(tokens):
-        raise RuntimeError(f'error: {webhook_func.__name__}()')
-
-    return True
+    if schedule_func(tokens):
+        utils.log(f'{table} schedule success')
+        files.write_timestamp(retry_key, MAX_TIMESTAMP)
+        webhook_func(tokens)
+    else:
+        utils.log(f'{table} schedule FAILURE')
+        files.write_timestamp(next_key, MAX_TIMESTAMP)
+        files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
 
 
-@errors.safelogged(bool, do_log=False)
+@errors.safelogged(bool, log=False)
 def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_func) -> bool:
     val: str = files.read_db_key_val(key)
     if ts <= (int(val) if len(val) else 0):

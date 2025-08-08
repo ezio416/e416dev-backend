@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-08
 
 import time
 
@@ -53,8 +53,8 @@ def execute_warrior(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
     execute(webhook)
 
 
-@errors.safelogged(bool)
-def seasonal(tokens: dict) -> bool:
+@errors.safelogged()
+def seasonal(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -71,8 +71,6 @@ def seasonal(tokens: dict) -> bool:
             ),
             map
         )
-
-    return True
 
 
 @errors.safelogged(bool)
