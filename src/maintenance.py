@@ -1,11 +1,9 @@
 # c 2025-01-27
-# m 2025-08-05
+# m 2025-08-08
 
 import csv
-import datetime
 
-import nadeo_api
-from nadeo_api import auth, live
+from nadeo_api import auth, config, live
 
 import api
 from constants import *
@@ -54,24 +52,6 @@ def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0
             ''')
 
     pass
-
-
-def display_db_epoch_vals() -> None:
-    table: list[dict] = files.read_table('KeyVals')
-
-    stage2: list = []
-    for i, _ in enumerate(table):
-        stage2.append((table[i]['key'], int(table[i]['val'])))
-
-    stage3: list = sorted(stage2, key=lambda pair: pair[1])
-
-    for key, val in stage3:
-        diff: int = val - utils.stamp()
-        print(
-            f'{key:<16}',
-            f'{datetime.datetime.fromtimestamp(int(val), datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%Sz')}',
-            f'({'in ' if diff > 0 else ''}{utils.format_long_time(abs(diff))}{' ago' if diff <= 0 else ''})'
-        )
 
 
 def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, factor: float = 0.5) -> list:
@@ -124,7 +104,7 @@ def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, fac
 
 def process_u10s() -> None:
     def load_csv() -> dict:
-        data = []
+        data: list = []
 
         with open('data/u10s_2.csv') as f:
             for i, line in enumerate(csv.reader(f)):
@@ -138,7 +118,7 @@ def process_u10s() -> None:
     club_id = 18974
     club_name = 'Everios96'
 
-    maps = load_csv()
+    maps: dict = load_csv()
 
     with files.Cursor(FILE_DB) as db:
         for map in maps:
@@ -177,18 +157,15 @@ def warriors_to_github() -> None:
 
 
 if __name__ == '__main__':
-    # display_db_epoch_vals()
-    # print(webhook_seasonal(None))
     # print(utils.calc_warrior_time(18518, 14811, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # warriors_to_github()
-    # tables_to_json()
     # for campaign_id in [77195, 78234, 84886, 91855, 97842]:
     #     add_club_campaign_warriors(65094, campaign_id)
 
-    nadeo_api.debug_logging = True
-    nadeo_api.wait_between_requests_ms = 500
+    config.debug_logging = True
+    config.wait_between_requests_ms = 500
 
     # token = api.get_token_core()
     # req = core.get_zones(token)
