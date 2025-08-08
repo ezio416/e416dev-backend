@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-08-05
+# m 2025-08-08
 
 import multiprocessing
 import time
@@ -36,7 +36,7 @@ def backend() -> None:
             schedules.schedule(tokens, 'next_weekly',   schedules.weekly,   'Weekly',   webhooks.weekly)
         )):
             files.tables_to_json()
-            github.send()
+            github.send_regular()
 
         if any((
             schedules.schedule_warriors(tokens, 'warrior_seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors),
