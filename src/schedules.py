@@ -2,7 +2,6 @@
 # m 2025-08-09
 
 import json
-import time
 import typing
 import zipfile
 
@@ -483,10 +482,10 @@ def weekly_warriors(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool, log=False)
-def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None]) -> bool:
-    next_key: str = f'next_{table}'
+def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None], warrior: bool = False) -> bool:
+    next_key: str = f'next_{'warrior_' if warrior else ''}{table}'
     next: int = files.read_timestamp(next_key)
-    retry_key: str = f'retry_{table}'
+    retry_key: str = f'retry_{'warrior_' if warrior else ''}{table}'
     retry: int = files.read_timestamp(retry_key)
 
     now: int = utils.stamp()
@@ -494,35 +493,13 @@ def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bo
         return False
 
     if schedule_func(tokens):
-        utils.log(f'info: {table} schedule success')
+        utils.log(f'info: {table} {'warrior' if warrior else 'schedule'} success')
         files.write_timestamp(retry_key, MAX_TIMESTAMP)
         webhook_func(tokens)
         return True
+
     else:
-        utils.log(f'warn: {table} schedule FAILURE')
+        utils.log(f'warn: {table} {'warrior' if warrior else 'schedule'} FAILURE')
         files.write_timestamp(next_key, MAX_TIMESTAMP)
         files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
         return False
-
-
-@errors.safelogged(bool, log=False)
-def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_func) -> bool:
-    val: str = files.read_db_key_val(key)
-    if ts <= (int(val) if len(val) else 0):
-        return False
-
-    tries = 4  # total = this + 1
-    while not (success := warrior_func(tokens)) and tries:
-        utils.log(f'error: {warrior_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
-        tries -= 1
-        time.sleep(5)
-    if not success:
-        files.write_db_key_val(key, ts + utils.minutes_to_seconds(3))
-        raise RuntimeError(f'error: {warrior_func.__name__}(), trying again in 3 minutes')
-
-    if not webhook_func():
-        raise RuntimeError(f'error: {webhook_func.__name__}()')
-
-    files.write_db_key_val(f'last_{key}', val)
-
-    return True
