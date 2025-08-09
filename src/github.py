@@ -80,9 +80,13 @@ def send_regular() -> None:
 def send_warrior() -> None:
     contents: list[dict] = _get_contents()
 
-    req: requests.Response = _send_file(FILE_WARRIOR, contents)
+    for file in (
+        FILE_WARRIOR,
+        FILE_WARRIOR_NEXT,
+    ):
+        req: requests.Response = _send_file(file, contents)
 
-    if req.status_code == 200:
-        utils.log(f'info: sent {os.path.basename(FILE_WARRIOR)}')
-    else:
-        raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(FILE_WARRIOR)}": {req.text}')
+        if req.status_code == 200:
+            utils.log(f'info: sent {os.path.basename(file)}')
+        else:
+            raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')

@@ -114,7 +114,7 @@ def tables_to_json() -> None:
 
 @errors.safelogged()
 def warriors_to_json() -> None:
-    warriors: dict = {'next': get_next_warrior()}
+    warriors: dict = {}
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
@@ -125,6 +125,9 @@ def warriors_to_json() -> None:
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
         f.write('\n')
+
+    with open(FILE_WARRIOR_NEXT, 'w', newline='\n') as f:
+        f.write(f'[{get_next_warrior()}]\n')
 
 
 @errors.safelogged()
