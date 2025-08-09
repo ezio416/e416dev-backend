@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-08
+# m 2025-08-09
 
 import base64
 import hashlib
@@ -52,7 +52,7 @@ def _send_file(file: str, contents: list[dict]) -> requests.Response:
             headers=HEADERS,
             json={
                 'content': base64.b64encode(file_data.encode()).decode(),
-                'message': utils.now(False),
+                'message': f'update {basename}',
                 'sha': item['sha']
             }
         )
