@@ -440,6 +440,9 @@ def weekly(tokens: dict) -> bool:
 
 @errors.safelogged(bool)
 def weekly_warriors(tokens: dict) -> bool:
+    if files.read_timestamp('next_weekly') < utils.stamp():
+        return False  # getting new weekly maps failed?
+
     maps: dict = {}
 
     with files.Cursor(FILE_DB) as db:
