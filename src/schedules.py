@@ -155,12 +155,12 @@ def seasonal_warriors(tokens: dict) -> bool:
                     "{map['campaignId']}",
                     "{map['mapUid']}",
                     "{map['name']}",
-                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
                     "{map['mapId']}",
                     "{map['goldTime']}"
-                )
+                );
             ''')
 
     return True
@@ -305,12 +305,12 @@ def totd_warrior(tokens: dict) -> bool:
                 "{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}",
                 "{map['mapUid']}",
                 "{map['name']}",
-                {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
                 "{map['warriorTime']}",
                 "{map['worldRecord']}",
                 "{map['mapId']}",
                 "{map['goldTime']}"
-            )
+            );
         ''')
 
     return True
@@ -463,14 +463,14 @@ def weekly_warriors(tokens: dict) -> bool:
                     "{map['mapUid']}",
                     "{map['name']}",
                     "{map['number']}",
-                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
                     "{map['mapId']}",
                     "{map['goldTime']}",
                     "{map['campaignId']}",
                     "{map['week']}"
-                )
+                );
             ''')
 
     return True
