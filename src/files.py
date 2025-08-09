@@ -116,13 +116,13 @@ def tables_to_json() -> None:
 
 @errors.safelogged()
 def warriors_to_json() -> None:
-    warriors: dict = {}
+    warriors: dict = {'next': get_next_warrior()}
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
 
         if table == 'Totd':
-            warriors[table] = sorted(warriors[table], key=lambda x: x['date'])
+            warriors[table] = sorted(warriors[table], key=lambda x: x['date'])  # todo: re-sort table to avoid this
 
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
