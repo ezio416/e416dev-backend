@@ -4,6 +4,7 @@
 import multiprocessing
 import time
 
+from nadeo_api import auth
 import nadeo_api.config
 
 import api
@@ -16,7 +17,7 @@ import webhooks
 
 
 def backend() -> None:
-    tokens: dict = api.get_tokens()
+    tokens: dict[str, auth.Token] = api.get_tokens()
 
     nadeo_api.config.wait_between_requests_ms = 500
 
