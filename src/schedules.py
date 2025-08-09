@@ -320,7 +320,7 @@ def totd_warrior(tokens: dict) -> bool:
 def weekly(tokens: dict) -> bool:
     next_weekly: int = files.read_timestamp('next_weekly')
     if 0 < next_weekly < MAX_TIMESTAMP:
-        files.write_timestamp('next_warrior_weekly', next_weekly + utils.hours_to_seconds(2))
+        files.write_timestamp('next_warrior_weekly', next_weekly + utils.weeks_to_seconds(1))
 
     maps_weekly: dict = live.get_maps_weekly(tokens['live'], 144)
 
@@ -491,12 +491,12 @@ def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bo
         utils.log(f'info: {table} schedule success')
         files.write_timestamp(retry_key, MAX_TIMESTAMP)
         webhook_func(tokens)
+        return True
     else:
-        utils.log(f'info: {table} schedule FAILURE')
+        utils.log(f'warn: {table} schedule FAILURE')
         files.write_timestamp(next_key, MAX_TIMESTAMP)
         files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
-
-    return True
+        return False
 
 
 @errors.safelogged(bool, log=False)
