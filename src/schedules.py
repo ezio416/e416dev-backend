@@ -14,6 +14,30 @@ import files
 import utils
 
 
+@errors.safelogged(bool, log=False)
+def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None], warrior: bool = False) -> bool:
+    next_key: str = f'next_{'warrior_' if warrior else ''}{table}'
+    next: int = files.read_timestamp(next_key)
+    retry_key: str = f'retry_{'warrior_' if warrior else ''}{table}'
+    retry: int = files.read_timestamp(retry_key)
+
+    now: int = utils.stamp()
+    if now < next and now < retry:
+        return False
+
+    if schedule_func(tokens):
+        utils.log(f'info: {table} {'warrior' if warrior else 'schedule'} success')
+        files.write_timestamp(retry_key, MAX_TIMESTAMP)
+        webhook_func(tokens)
+        return True
+
+    else:
+        utils.log(f'warn: {table} {'warrior' if warrior else 'schedule'} FAILURE')
+        files.write_timestamp(next_key, MAX_TIMESTAMP)
+        files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
+        return False
+
+
 @errors.safelogged(bool)
 def seasonal(tokens: dict) -> bool:
     next_seasonal: int = files.read_timestamp('next_seasonal')
@@ -479,27 +503,3 @@ def weekly_warriors(tokens: dict) -> bool:
     files.write_timestamp('next_warrior_weekly', files.read_timestamp('next_weekly') + utils.weeks_to_seconds(1))
 
     return True
-
-
-@errors.safelogged(bool, log=False)
-def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None], warrior: bool = False) -> bool:
-    next_key: str = f'next_{'warrior_' if warrior else ''}{table}'
-    next: int = files.read_timestamp(next_key)
-    retry_key: str = f'retry_{'warrior_' if warrior else ''}{table}'
-    retry: int = files.read_timestamp(retry_key)
-
-    now: int = utils.stamp()
-    if now < next and now < retry:
-        return False
-
-    if schedule_func(tokens):
-        utils.log(f'info: {table} {'warrior' if warrior else 'schedule'} success')
-        files.write_timestamp(retry_key, MAX_TIMESTAMP)
-        webhook_func(tokens)
-        return True
-
-    else:
-        utils.log(f'warn: {table} {'warrior' if warrior else 'schedule'} FAILURE')
-        files.write_timestamp(next_key, MAX_TIMESTAMP)
-        files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
-        return False
