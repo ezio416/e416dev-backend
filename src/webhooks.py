@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-08
+# m 2025-08-09
 
 import time
 
@@ -78,8 +78,8 @@ def seasonal(tokens: dict) -> None:
         )
 
 
-@errors.safelogged(bool)
-def seasonal_warriors() -> bool:
+@errors.safelogged()
+def seasonal_warriors() -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -121,8 +121,8 @@ def totd(tokens: dict) -> None:
     )
 
 
-@errors.safelogged(bool)
-def totd_warrior() -> bool:
+@errors.safelogged()
+def totd_warrior() -> None:
     with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
 
@@ -163,8 +163,8 @@ def weekly(tokens: dict) -> None:
         )
 
 
-@errors.safelogged(bool)
-def weekly_warriors() -> bool:
+@errors.safelogged()
+def weekly_warriors() -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
