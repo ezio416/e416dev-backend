@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-08
+# m 2025-08-09
 
 import datetime as dt
 import json
@@ -38,53 +38,34 @@ class Cursor:
 
 
 @errors.safelogged(int)
-def handle_tops(tops: list[dict], uid: str) -> int:
+def handle_tops(tops: list[dict], uid: str, name: str) -> int:
+    for top in tops:
+        top.pop('timestamp')
+        top.pop('zoneId')
+        top.pop('zoneName')
+
     with Cursor(FILE_DB) as db:
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Tops (
-                timestamp INT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS Tops2 (
+                mapName   TEXT,
                 mapUid    VARCHAR(27),
-                score1    INT,
-                score2    INT,
-                score3    INT,
-                score4    INT,
-                score5    INT,
-                account1  TEXT,
-                account2  TEXT,
-                account3  TEXT,
-                account4  TEXT,
-                account5  TEXT
+                timestamp INT,
+                tops      TEXT
             );
         ''')
 
         db.execute(f'''
-            INSERT INTO Tops (
-                timestamp,
+            INSERT INTO Tops2 (
+                mapName,
                 mapUid,
-                score1,
-                score2,
-                score3,
-                score4,
-                score5,
-                account1,
-                account2,
-                account3,
-                account4,
-                account5
+                timestamp,
+                tops
             ) VALUES (
-                "{utils.stamp()}",
+                "{utils.strip_format_codes(name)}",
                 "{uid}",
-                "{tops[0]['score']}",
-                "{tops[1]['score']}",
-                "{tops[2]['score']}",
-                "{tops[3]['score']}",
-                "{tops[4]['score']}",
-                "{tops[0]['accountId']}",
-                "{tops[1]['accountId']}",
-                "{tops[2]['accountId']}",
-                "{tops[3]['accountId']}",
-                "{tops[4]['accountId']}"
-            )
+                {utils.stamp()},
+                "{str(tops)}"
+            );
         ''')
 
     return tops[0]['score']

@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-08
+# m 2025-08-09
 
 import json
 import time
@@ -118,9 +118,9 @@ def seasonal_warriors(tokens: dict) -> bool:
     for uid, map in maps.items():
         utils.log(f'info: getting records for "{map['name']}"')
 
-        req: dict = live.get_map_leaderboard(tokens['live'], uid)
+        req: dict = live.get_map_leaderboard(tokens['live'], uid, length=10)
 
-        maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'])
+        maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
         maps[uid]['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'])
 
     with files.Cursor(FILE_DB) as db:
@@ -269,9 +269,9 @@ def totd_warrior(tokens: dict) -> bool:
 
     utils.log(f'info: getting records for TOTD {map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}')
 
-    req: dict = live.get_map_leaderboard(tokens['live'], map['mapUid'])
+    req: dict = live.get_map_leaderboard(tokens['live'], map['mapUid'], length=10)
 
-    map['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'])
+    map['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
     map['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
 
     with files.Cursor(FILE_DB) as db:
@@ -422,9 +422,9 @@ def weekly_warriors(tokens: dict) -> bool:
     for uid, map in maps.items():
         utils.log(f'info: getting records for week {map['week']} map "{map['name']}"')
 
-        req: dict = live.get_map_leaderboard(tokens['live'], uid)
+        req: dict = live.get_map_leaderboard(tokens['live'], uid, length=10)
 
-        maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'])
+        maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
         maps[uid]['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'], 0.5)
 
     with files.Cursor(FILE_DB) as db:
