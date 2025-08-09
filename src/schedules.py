@@ -5,7 +5,7 @@ import json
 import typing
 import zipfile
 
-from nadeo_api import live
+from nadeo_api import core, live
 
 import api
 from constants import *
@@ -15,7 +15,7 @@ import utils
 
 
 @errors.safelogged(bool, log=False)
-def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None], warrior: bool = False) -> bool:
+def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None] | None, warrior: bool = False) -> bool:
     next_key: str = f'next_{'warrior_' if warrior else ''}{table}'
     next: int = files.read_timestamp(next_key)
     retry_key: str = f'retry_{'warrior_' if warrior else ''}{table}'
@@ -28,7 +28,8 @@ def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bo
     if schedule_func(tokens):
         utils.log(f'info: {table} {'warrior' if warrior else 'schedule'} success')
         files.write_timestamp(retry_key, MAX_TIMESTAMP)
-        webhook_func(tokens)
+        if webhook_func:
+            webhook_func(tokens)
         return True
 
     else:
@@ -398,7 +399,7 @@ def weekly(tokens: dict) -> bool:
 
             for map in campaign['playlist']:
                 db.execute(f'''
-                    INSERT INTO Weekly (
+                    INSERT INTO {TABLE} (
                         campaignId,
                         mapIndex,
                         mapUid,
@@ -501,5 +502,68 @@ def weekly_warriors(tokens: dict) -> bool:
             ''')
 
     files.write_timestamp('next_warrior_weekly', files.read_timestamp('next_weekly') + utils.weeks_to_seconds(1))
+
+    return True
+
+
+@errors.safelogged(bool)
+def zone(tokens: dict) -> bool:
+    zones_raw: dict = core.get_zones(tokens['core'])
+
+    if os.path.isfile(FILE_ZONE_RAW):
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/zone_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
+            zip.write(FILE_ZONE_RAW, 'zone_raw.json')
+
+    with open(FILE_ZONE_RAW, 'w', newline='\n') as f:
+        json.dump(zones_raw, f, indent=4)
+        f.write('\n')
+
+    zones: dict = {zone['zoneId']: zone for zone in zones_raw}
+
+    for _, zone in zones.items():
+        zone['parent'] = zones[zone['parentId']] if zone['parentId'] in zones else None
+
+    for _, zone in zones.items():
+        zone['parents'] = [zone['name']]
+        parent: dict = zone['parent']
+        while parent:
+            zone['parents'].append(parent['name'])
+            parent = parent['parent']
+        zone['path'] = ' | '.join(zone['parents'][:-1])
+
+    TABLE: str = 'Zone'
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
+        db.execute(f'''
+            CREATE TABLE IF NOT EXISTS {TABLE} (
+                name     TEXT,
+                parentId CHAR(36),
+                path     TEXT,
+                zoneId   CHAR(36) PRIMARY KEY
+            );
+        ''')
+
+        for zoneId, zone in zones.items():
+            db.execute(f'''
+                INSERT INTO {TABLE} (
+                    name,
+                    parentId,
+                    path,
+                    zoneId
+                ) VALUES (
+                    "{zone['name']}",
+                    "{zone['parentId']}",
+                    "{zone['path']}",
+                    "{zoneId}"
+                );
+            ''')
+
+    files.write_timestamp('next_zone', files.read_timestamp('next_zone') + utils.weeks_to_seconds(1))
 
     return True

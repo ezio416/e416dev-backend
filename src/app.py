@@ -34,7 +34,8 @@ def backend() -> None:
         if any((
             schedules.schedule(tokens, 'seasonal', schedules.seasonal, webhooks.seasonal),
             schedules.schedule(tokens, 'totd',     schedules.totd,     webhooks.totd),
-            schedules.schedule(tokens, 'weekly',   schedules.weekly,   webhooks.weekly)
+            schedules.schedule(tokens, 'weekly',   schedules.weekly,   webhooks.weekly),
+            schedules.schedule(tokens, 'zone',     schedules.zone,     None)
         )):
             files.tables_to_json()
             github.send_regular()

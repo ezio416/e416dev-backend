@@ -113,6 +113,10 @@ def tables_to_json() -> None:
             json.dump({item['mapUid']: item for item in read_table(table_name)}, f, indent=4)
             f.write('\n')
 
+    with open(FILE_ZONE, 'w', newline='\n') as f:
+        json.dump({item['zoneId']: item for item in read_table('Zone')}, f, indent=4)
+        f.write('\n')
+
 
 @errors.safelogged()
 def warriors_to_json() -> None:
