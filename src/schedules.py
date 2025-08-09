@@ -163,6 +163,8 @@ def seasonal_warriors(tokens: dict) -> bool:
                 );
             ''')
 
+    files.write_timestamp('next_warrior_seasonal', files.read_timestamp('next_seasonal') + utils.weeks_to_seconds(2))
+
     return True
 
 
@@ -312,6 +314,8 @@ def totd_warrior(tokens: dict) -> bool:
                 "{map['goldTime']}"
             );
         ''')
+
+    files.write_timestamp('next_warrior_totd', files.read_timestamp('next_totd') + utils.hours_to_seconds(2))
 
     return True
 
@@ -472,6 +476,8 @@ def weekly_warriors(tokens: dict) -> bool:
                     "{map['week']}"
                 );
             ''')
+
+    files.write_timestamp('next_warrior_weekly', files.read_timestamp('next_weekly') + utils.weeks_to_seconds(1))
 
     return True
 
