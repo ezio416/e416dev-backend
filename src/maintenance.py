@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-08
+# m 2025-08-09
 
 import csv
 
@@ -151,12 +151,17 @@ def process_u10s() -> None:
     pass
 
 
+def rewrite_timestamps() -> None:
+    for ts in files.read_table('Timestamps'):
+        files.write_timestamp(ts['key'], ts['ts'])
+
+
 def warriors_to_github() -> None:
     files.warriors_to_json()
     github.send_warrior()
 
 
-if __name__ == '__main__':
+def main() -> None:
     # print(utils.calc_warrior_time(18518, 14811, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
@@ -174,4 +179,10 @@ if __name__ == '__main__':
 
     # github.send_all()
 
+    rewrite_timestamps()
+
     pass
+
+
+if __name__ == '__main__':
+    main()

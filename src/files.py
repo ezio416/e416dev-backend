@@ -84,12 +84,6 @@ def get_next_warrior() -> int:
     return min(seasonal, totd, weekly)
 
 
-@errors.safelogged(str, True)
-def read_db_key_val(key: str) -> str:
-    with Cursor(FILE_DB) as db:
-        return db.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
-
-
 @errors.safelogged(list, log=False)
 def read_table(table: str) -> list[dict]:
     with Cursor(FILE_DB) as db:
@@ -131,14 +125,6 @@ def warriors_to_json() -> None:
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
         f.write('\n')
-
-
-@errors.safelogged()
-def write_db_key_val(key: str, val) -> None:
-    with Cursor(FILE_DB) as db:
-        db.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
-        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
-        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{utils.stamp()}")')
 
 
 @errors.safelogged()
