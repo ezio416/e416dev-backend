@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-08
+# m 2025-08-09
 
 import datetime as dt
 
@@ -17,7 +17,10 @@ accounts: dict[str, dict] = {}
 
 @errors.safelogged(str)
 def get_account_name(tokens: dict, account_id: str) -> str:
-    if account_id in ('d2372a08-a8a1-46cb-97fb-23a161d85ad0', 'aa02b90e-0652-4a1c-b705-4677e2983003'):
+    if account_id in (
+        'd2372a08-a8a1-46cb-97fb-23a161d85ad0',
+        'aa02b90e-0652-4a1c-b705-4677e2983003'
+    ):
         return 'Nadeo'
 
     global accounts
@@ -42,7 +45,7 @@ def get_account_name(tokens: dict, account_id: str) -> str:
     name: str = req[account_id]
     accounts[account_id] = {}
     accounts[account_id]['name'] = name
-    accounts[account_id]['ts'] = ts + utils.days_to_seconds(1)
+    accounts[account_id]['ts'] = ts + utils.weeks_to_seconds(1)
 
     return name
 
