@@ -70,10 +70,11 @@ def send_regular() -> None:
     ):
         req: requests.Response | None = _send_file(file, contents)
 
-        if req and req.status_code == 200:
-            utils.log(f'info: sent {os.path.basename(file)}')
-        else:
-            raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')
+        if req:
+            if req.status_code == 200:
+                utils.log(f'info: sent {os.path.basename(file)}')
+            else:
+                raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')
 
 
 @errors.safelogged()
