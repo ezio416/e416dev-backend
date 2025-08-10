@@ -58,16 +58,10 @@ def _send_file(file: str, contents: list[dict]) -> requests.Response | None:
         )
 
 
-@errors.safelogged()
-def send_regular() -> None:
+def _send_multi(files: tuple[str]) -> None:
     contents: list[dict] = _get_contents()
 
-    for file in (
-        FILE_SEASONAL,
-        FILE_TOTD,
-        FILE_WEEKLY,
-        FILE_ZONE
-    ):
+    for file in files:
         req: requests.Response | None = _send_file(file, contents)
 
         if req:
@@ -78,16 +72,10 @@ def send_regular() -> None:
 
 
 @errors.safelogged()
+def send_regular() -> None:
+    _send_multi((FILE_SEASONAL, FILE_TOTD, FILE_WEEKLY, FILE_ZONE))
+
+
+@errors.safelogged()
 def send_warrior() -> None:
-    contents: list[dict] = _get_contents()
-
-    for file in (
-        FILE_WARRIOR,
-        FILE_WARRIOR_NEXT,
-    ):
-        req: requests.Response = _send_file(file, contents)
-
-        if req.status_code == 200:
-            utils.log(f'info: sent {os.path.basename(file)}')
-        else:
-            raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')
+    _send_multi((FILE_WARRIOR, FILE_WARRIOR_NEXT,))
