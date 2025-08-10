@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-09
+# m 2025-08-10
 
 import datetime as dt
 import json
@@ -125,9 +125,6 @@ def warriors_to_json() -> None:
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
         f.write('\n')
-
-    with open(FILE_WARRIOR_NEXT, 'w', newline='\n') as f:
-        f.write(f'[{get_next_warrior()}]\n')
 
 
 @errors.safelogged()

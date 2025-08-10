@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-09
+# m 2025-08-10
 
 import base64
 import hashlib
@@ -78,4 +78,4 @@ def send_regular() -> None:
 
 @errors.safelogged()
 def send_warrior() -> None:
-    _send_multi((FILE_WARRIOR, FILE_WARRIOR_NEXT,))
+    _send_multi((FILE_WARRIOR,))
