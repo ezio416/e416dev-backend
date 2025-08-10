@@ -347,8 +347,6 @@ def totd_warrior(tokens: dict) -> bool:
 @errors.safelogged(bool)
 def weekly(tokens: dict) -> bool:
     next_weekly: int = files.read_timestamp('next_weekly')
-    if 0 < next_weekly < MAX_TIMESTAMP:
-        files.write_timestamp('next_warrior_weekly', next_weekly + utils.weeks_to_seconds(1))
 
     maps_weekly: dict = live.get_maps_weekly(tokens['live'], 144)
 
