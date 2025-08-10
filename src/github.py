@@ -25,10 +25,10 @@ def _get_contents() -> list[dict]:
     return requests.get(BASE_URL, headers=HEADERS).json()
 
 
-def _send_file(file: str, contents: list[dict]) -> requests.Response:
+def _send_file(file: str, contents: list[dict]) -> requests.Response | None:
     if not os.path.isfile(file):
         utils.log(f'warn: not found: {file}')
-        return -1
+        return
 
     with open(file) as f:
         file_data: str = f.read()
@@ -68,9 +68,9 @@ def send_regular() -> None:
         FILE_WEEKLY,
         FILE_ZONE
     ):
-        req: requests.Response = _send_file(file, contents)
+        req: requests.Response | None = _send_file(file, contents)
 
-        if req.status_code == 200:
+        if req and req.status_code == 200:
             utils.log(f'info: sent {os.path.basename(file)}')
         else:
             raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')
