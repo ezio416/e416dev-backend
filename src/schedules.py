@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-09
+# m 2025-08-10
 
 import json
 import typing
@@ -505,7 +505,7 @@ def weekly_warriors(tokens: dict) -> bool:
                 );
             ''')
 
-    files.write_timestamp('next_warrior_weekly', files.read_timestamp('next_weekly') + utils.weeks_to_seconds(1))
+    files.write_timestamp('next_warrior_weekly', files.read_timestamp('next_weekly'))
 
     return True
 
