@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-06
+# m 2025-08-09
 
 import json
 import os
@@ -98,7 +98,7 @@ def safelogged(return_type: type = None, silent: bool = False, log: bool = True)
                 return None
 
             if log and not silent:
-                utils.log(f'info: called {func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
+                utils.log(f'info: called {func.__module__}.{func.__name__}({', '.join([f"{type(s).__name__}('{s}')" for s in args])})')
 
             try:
                 return func(*args, **kwargs)
