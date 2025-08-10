@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-08-05
+# m 2025-08-10
 
 import flask
 
@@ -22,6 +22,12 @@ def tm_calc_warrior_time() -> list[int]:
         return [utils.calc_warrior_time(at, wr, factor)]
 
     return [0]
+
+
+@provider.route('/tm/get_warrior_next')
+@provider.route('/tm/get_warrior_next/')
+def tm_get_warrior_next() -> list[int]:
+    return [files.get_next_warrior()]
 
 
 @provider.route('/tm/get_warrior_time')
