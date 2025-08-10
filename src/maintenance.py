@@ -177,9 +177,10 @@ def main() -> None:
     # req = core.get_zones(token)
     # req = core.get_zones(token)
 
-    # github.send_all()
+    # github.send_regular()
+    # github.send_warrior()
 
-    rewrite_timestamps()
+    # rewrite_timestamps()
 
     pass
 
