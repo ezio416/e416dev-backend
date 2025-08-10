@@ -562,7 +562,7 @@ def zone(tokens: dict) -> bool:
                     zoneId
                 ) VALUES (
                     "{zone['name']}",
-                    "{zone['parentId']}",
+                    "{zone['parentId'] if zone['parentId'] else ''}",
                     "{zone['path']}",
                     "{zoneId}"
                 );
