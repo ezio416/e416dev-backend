@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-09
+# m 2025-08-10
 
 import csv
 
@@ -162,15 +162,15 @@ def warriors_to_github() -> None:
 
 
 def main() -> None:
-    # print(utils.calc_warrior_time(18518, 14811, 0.5))
+    config.debug_logging = True
+    config.wait_between_requests_ms = 500
+
+    # print(utils.calc_warrior_time(19294, 8272, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # warriors_to_github()
     # for campaign_id in [77195, 78234, 84886, 91855, 97842]:
     #     add_club_campaign_warriors(65094, campaign_id)
-
-    config.debug_logging = True
-    config.wait_between_requests_ms = 500
 
     # token = api.get_token_core()
     # req = core.get_zones(token)
