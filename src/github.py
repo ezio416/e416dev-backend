@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-10
+# m 2025-08-11
 
 import base64
 import hashlib
@@ -58,7 +58,7 @@ def _send_file(file: str, contents: list[dict]) -> requests.Response | None:
         )
 
 
-def _send_multi(files: tuple[str]) -> None:
+def _send_multi(files: tuple[str]) -> bool:
     contents: list[dict] = _get_contents()
 
     for file in files:
@@ -67,15 +67,16 @@ def _send_multi(files: tuple[str]) -> None:
         if req:
             if req.status_code == 200:
                 utils.log(f'info: sent {os.path.basename(file)}')
+                return True
             else:
                 raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')
 
 
-@errors.safelogged()
-def send_regular() -> None:
-    _send_multi((FILE_SEASONAL, FILE_TOTD, FILE_WEEKLY, FILE_ZONE))
+@errors.safelogged(bool)
+def send_regular() -> bool:
+    return _send_multi((FILE_SEASONAL, FILE_TOTD, FILE_WEEKLY, FILE_ZONE))
 
 
-@errors.safelogged()
-def send_warrior() -> None:
-    _send_multi((FILE_WARRIOR,))
+@errors.safelogged(bool)
+def send_warrior() -> bool:
+    return _send_multi((FILE_WARRIOR,))

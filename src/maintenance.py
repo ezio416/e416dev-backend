@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-10
+# m 2025-08-11
 
 import csv
 
@@ -10,96 +10,6 @@ from constants import *
 import files
 import github
 import utils
-
-
-def add_club_campaign_warriors(club_id: int, campaign_id: int, factor: float = 0.5) -> None:
-    # tokens = get_tokens()
-    tokens: dict[str, auth.Token] = {'live': api.get_token_live()}
-    maps: list = get_tops_for_club_campaign(tokens, club_id, campaign_id, factor)
-
-    with files.Cursor(FILE_DB) as db:
-        for i, map in enumerate(maps):
-            uid: str = map['uid']
-
-            db.execute(f'''
-                INSERT INTO WarriorOther (
-                    authorTime,
-                    campaignId,
-                    campaignName,
-                    clubId,
-                    clubName,
-                    mapIndex,
-                    mapUid,
-                    name,
-                    warriorTime,
-                    worldRecord,
-                    mapId,
-                    goldTime
-                ) VALUES (
-                    "{map['at']}",
-                    "{map['campaign_id']}",
-                    "{map['campaign_name']}",
-                    "{map['club_id']}",
-                    "{map['club_name']}",
-                    "{i}",
-                    "{uid}",
-                    "{map['name']}",
-                    "{map['wm']}",
-                    "{map['wr']}",
-                    "{map['id']}",
-                    "{map['gt']}"
-                )
-            ''')
-
-    pass
-
-
-def get_tops_for_club_campaign(tokens: dict, club_id: int, campaign_id: int, factor: float = 0.5) -> list:
-    print(f'getting maps for club {club_id}, campaign {campaign_id}')
-
-    req: dict = live.get_club_campaign(tokens['live'], club_id, campaign_id)
-
-    club_name: str = req['clubName']
-    campaign: dict = req['campaign']
-    campaign_name: str = campaign['name']
-    uids: list = []
-
-    for entry in campaign['playlist']:
-        uids.append(entry['mapUid'])
-
-    print(f'getting info for club {club_id}, campaign {campaign_id}')
-
-    info: dict = live.get(
-        tokens['live'],
-        f'api/token/map/get-multiple?mapUidList={'%2C'.join(uids)}'
-    )
-
-    maps: list = []
-
-    for entry in info['mapList']:
-        maps.append({
-            'at': entry['authorTime'],
-            'campaign_id': campaign_id,
-            'campaign_name': campaign_name,
-            'club_id': club_id,
-            'club_name': club_name,
-            'gt': entry['goldTime'],
-            'id': entry['mapId'],
-            'name': entry['name'],
-            'uid': entry['uid']
-        })
-
-    for map in maps:
-        uid: str = map['uid']
-
-        print(f'getting top for map {uid}')
-
-        top: dict = live.get_map_leaderboard(tokens['live'], uid)
-
-        map['wr'] = top['tops'][0]['top'][0]['score']
-        map['wm'] = utils.calc_warrior_time(map['at'], map['wr'], factor)
-
-    return maps
 
 
 def process_u10s() -> None:
@@ -181,6 +91,8 @@ def main() -> None:
     # github.send_warrior()
 
     # rewrite_timestamps()
+
+    # req = live.get_map_leaderboard(api.get_token_live(), 'F6B8jSu7umawah4kA5fssf8ro7d', length=20)  # please cheat this map
 
     pass
 

@@ -1,9 +1,10 @@
 # c 2025-01-27
-# m 2025-08-09
+# m 2025-08-11
 
 import datetime as dt
+import typing
 
-from nadeo_api import auth, core, oauth
+from nadeo_api import auth, core, live, oauth
 import requests
 
 from constants import *
@@ -13,6 +14,61 @@ import utils
 
 
 accounts: dict[str, dict] = {}
+
+
+@errors.safelogged(bool)
+def add_warriors_club_campaign(tokens: dict, club_id: int, campaign_id: int) -> bool:
+    campaign_info: dict = live.get_club_campaign(tokens['live'], club_id, campaign_id)
+    maps_by_uid: dict[str, dict] = {map['mapUid']: map for map in campaign_info['campaign']['playlist']}
+    maps_info: list[dict] = core.get_map_info(tokens['core'], list(maps_by_uid))
+    for map in maps_info:
+        map['position'] = maps_by_uid[map['mapUid']]['position']
+        req: dict = live.get_map_leaderboard(tokens['live'], map['mapUid'], length=10)
+        map['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
+    maps_sorted: list[dict] = sorted(maps_info, key=lambda x: x['position'])
+
+    with files.Cursor(FILE_DB) as db:
+        for map in maps_sorted:
+            db.execute(f'''
+                INSERT INTO WarriorOther (
+                    authorTime,
+                    campaignId,
+                    campaignName,
+                    clubId,
+                    clubName,
+                    goldTime,
+                    mapId,
+                    mapIndex,
+                    mapUid,
+                    name,
+                    warriorTime,
+                    worldRecord
+                ) VALUES (
+                    {map['authorScore']},
+                    {campaign_id},
+                    "{campaign_info['name']}",
+                    {club_id},
+                    "{campaign_info['clubName']}",
+                    {map['goldScore']},
+                    "{map['mapId']}",
+                    {map['position']},
+                    "{map['mapUid']}",
+                    "{map['name']}",
+                    {utils.calc_warrior_time(map['authorScore'], map['worldRecord'], 0.5)},
+                    {map['worldRecord']}
+                );
+            ''')
+
+    return True
+
+
+def add_warriors_club_campaigns(tokens: dict, club_id: int, campaign_ids: typing.Iterable[int]) -> bool:
+    ret: bool = True
+
+    for campaign_id in campaign_ids:
+        ret = ret and add_warriors_club_campaign(tokens, club_id, campaign_id)
+
+    return ret
 
 
 @errors.safelogged(str)
