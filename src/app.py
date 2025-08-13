@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-08-09
+# m 2025-08-13
 
 import multiprocessing
 import time
@@ -9,6 +9,7 @@ import nadeo_api.config
 
 import api
 import api_provider
+import errors
 import files
 import github
 import schedules
@@ -26,27 +27,31 @@ def backend() -> None:
         now: int = utils.stamp()
         utils.log('loop', log_file=False)
 
-        for audience, token in tokens.items():  # bandaid
-            if audience != 'oauth' and now + utils.minutes_to_seconds(15) > token.expiration:
-                utils.log(f'warn: {audience} token is 15 minutes to expiry, refreshing...')
-                token.refresh()
+        try:
+            for audience, token in tokens.items():  # bandaid
+                if audience != 'oauth' and now + utils.minutes_to_seconds(15) > token.expiration:
+                    utils.log(f'warn: {audience} token is 15 minutes to expiry, refreshing...')
+                    token.refresh()
 
-        if any((
-            schedules.schedule(tokens, 'seasonal', schedules.seasonal, webhooks.seasonal),
-            schedules.schedule(tokens, 'totd',     schedules.totd,     webhooks.totd),
-            schedules.schedule(tokens, 'weekly',   schedules.weekly,   webhooks.weekly),
-            schedules.schedule(tokens, 'zone',     schedules.zone,     None)
-        )):
-            files.tables_to_json()
-            github.send_regular()
+            if any((
+                schedules.schedule(tokens, 'seasonal', schedules.seasonal, webhooks.seasonal),
+                schedules.schedule(tokens, 'totd',     schedules.totd,     webhooks.totd),
+                schedules.schedule(tokens, 'weekly',   schedules.weekly,   webhooks.weekly),
+                schedules.schedule(tokens, 'zone',     schedules.zone,     None)
+            )):
+                files.tables_to_json()
+                github.send_regular()
 
-        if any((
-            schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors, True),
-            schedules.schedule(tokens, 'totd',     schedules.totd_warrior,      webhooks.totd_warrior,      True),
-            schedules.schedule(tokens, 'weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors,   True),
-        )):
-            files.warriors_to_json()
-            github.send_warrior()
+            if any((
+                schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors, True),
+                schedules.schedule(tokens, 'totd',     schedules.totd_warrior,      webhooks.totd_warrior,      True),
+                schedules.schedule(tokens, 'weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors,   True),
+            )):
+                files.warriors_to_json()
+                github.send_warrior()
+
+        except Exception as e:
+            errors.error(e)
 
 
 if __name__ == '__main__':
