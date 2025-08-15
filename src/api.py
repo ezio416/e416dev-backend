@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-11
+# m 2025-08-15
 
 import datetime as dt
 import typing
@@ -152,11 +152,13 @@ def get_map_infos(tokens: dict, table: str) -> bool:
 
 @errors.safelogged(dict)
 def get_tmx_info(uid: str) -> dict:
-    req: dict = requests.get(f'{TMX_BASE_URL}/api/maps?fields=MapId,Tags&uid={uid}', timeout=5).json()
+    req: requests.Response = requests.get(f'{TMX_BASE_URL}/api/maps?fields=MapId,Tags&uid={uid}', timeout=5)
+    utils.log(f'tmx req: {req.text}')
     try:
+        data: dict = req.json()
         return {
-            'id': req['Results'][0]['MapId'],
-            'tags': [tag['Name'] for tag in req['Results'][0]['Tags']]
+            'id': data['Results'][0]['MapId'],
+            'tags': [tag['Name'] for tag in data['Results'][0]['Tags']]
         }
     except Exception:
         return {}
