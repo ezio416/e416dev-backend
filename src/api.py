@@ -153,7 +153,7 @@ def get_map_infos(tokens: dict, table: str) -> bool:
 @errors.safelogged(dict)
 def get_tmx_info(uid: str) -> dict:
     req: requests.Response = requests.get(f'{TMX_BASE_URL}/api/maps?fields=MapId,Tags&uid={uid}', timeout=5)
-    utils.log(f'tmx req: {req.text}')
+    utils.log(f'info: tmx req: {req.text}')
     try:
         data: dict = req.json()
         return {

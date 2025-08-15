@@ -30,7 +30,7 @@ def backend() -> None:
         utils.log('loop', log_file=False)
 
         while not os.path.isfile(FILE_DB):
-            utils.log('db file not found')
+            utils.log('warn: db file not found')
             time.sleep(1)
 
         try:
