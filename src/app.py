@@ -1,7 +1,8 @@
 # c 2024-12-26
-# m 2025-08-13
+# m 2025-08-15
 
 import multiprocessing
+import os
 import time
 
 from nadeo_api import auth
@@ -9,6 +10,7 @@ import nadeo_api.config
 
 import api
 import api_provider
+from constants import *
 import errors
 import files
 import github
@@ -26,6 +28,10 @@ def backend() -> None:
         time.sleep(1)
         now: int = utils.stamp()
         utils.log('loop', log_file=False)
+
+        while not os.path.isfile(FILE_DB):
+            utils.log('db file not found')
+            time.sleep(1)
 
         try:
             for audience, token in tokens.items():  # bandaid
