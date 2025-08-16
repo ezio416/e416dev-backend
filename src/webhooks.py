@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-10
+# m 2025-08-16
 
 import time
 
@@ -116,8 +116,8 @@ def totd(tokens: dict) -> None:
                 })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
             color='00CCFF'
         ),
-        map,
-        api.get_tmx_info(map['mapUid'])
+        map#,
+        #api.get_tmx_info(map['mapUid'])
     )
 
 
