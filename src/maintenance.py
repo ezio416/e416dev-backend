@@ -1,10 +1,10 @@
 # c 2025-01-27
-# m 2025-07-19
+# m 2025-10-10
 
 import csv
 from datetime import timezone
 
-from nadeo_api import live
+from nadeo_api import core, live
 
 from api import *
 from files import *
@@ -351,6 +351,79 @@ def migrate_old_warriors() -> None:
     pass
 
 
+def process_icy_f25() -> None:
+    def load_csv() -> list:
+        data: list = []
+
+        with open('data/icy_f25.csv') as f:
+            for i, line in enumerate(csv.reader(f)):
+                if not i:
+                    continue
+
+                data.append(line)
+
+        return data
+
+    maps: dict = {}
+
+    for map in load_csv():
+        uid: str = map[0]
+        maps[uid] = {}
+        maps[uid]['wt'] = int(map[1])
+
+    uids: list[str] = list(maps)
+
+    import nadeo_api
+    nadeo_api.config.debug_logging = True
+
+    token: auth.Token = get_token_core()
+    info: list[dict] = core.get_map_info(token, uids)
+
+    for map in info:
+        uid: str = map['mapUid']
+        maps[uid]['at']   = map['authorScore']
+        maps[uid]['gt']   = map['goldScore']
+        maps[uid]['id']   = map['mapId']
+        maps[uid]['name'] = map['name']
+
+    club_id:       int = 84969
+    club_name:     str = 'Icy Campaign'
+    campaign_id:   int =  112251
+    campaign_name: str = 'Icy Fall 2025'
+
+    print('writing db')
+
+    with Cursor(FILE_DB) as db:
+        for uid, map in maps.items():
+            db.execute(f'''
+                INSERT INTO WarriorOther (
+                    authorTime,
+                    goldTime,
+                    mapId,
+                    mapUid,
+                    campaignId,
+                    campaignName,
+                    clubId,
+                    clubName,
+                    name,
+                    warriorTime
+                ) VALUES (
+                    {map['at']},
+                    {map['gt']},
+                    "{map['id']}",
+                    "{uid}",
+                    {campaign_id},
+                    "{campaign_name}",
+                    {club_id},
+                    "{club_name}",
+                    "{map['name']}",
+                    {map['wt']}
+                )
+            ''')
+
+    ...
+
+
 def process_u10s() -> None:
     def load_csv() -> dict:
         data = []
@@ -437,7 +510,7 @@ if __name__ == '__main__':
     # print(calc_warrior_time(27472, 25798, 0.55))  # sp25-06
     # print(calc_warrior_time(37288, 34724, 0.45))  # sp25-11
     # print(calc_warrior_time(42927, 40006, 0.35))  # sp25-16
-    # print(calc_warrior_time(20000, 16426, 0.5))
+    # print(calc_warrior_time(21509, 8913, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
     # add_map_ids_to_warriors()
@@ -445,5 +518,9 @@ if __name__ == '__main__':
     # tables_to_json()
     # add_gold_times_to_warriors()
     # add_campaign_ids_and_weeks_to_weekly_warriors()
+    # process_icy_f25()
+
+    # token = get_token_core()
+    # info = core.get_map_info(token, ['nxlB_BupOAsZmjdqPzk3Iqx5kzf', 'lkilf5mVDbpNBaBTtF99IwqdZah', 'RjWO4e39I7t5RcYQ1V8nj8k3gOl', 'zjtcThbppGKn_xrzBRUZHQxMZlb', 'z31HXFuTOEm7mN_y5LMfeVeaOG8'])
 
     pass
