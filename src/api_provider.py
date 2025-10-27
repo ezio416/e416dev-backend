@@ -10,6 +10,15 @@ import github
 import utils
 
 
+OK                = 200
+NO_CONTENT        = 204
+BAD_REQUEST       = 400
+UNAUTHORIZED      = 401
+FORBIDDEN         = 403
+UPGRADE_REQUIRED  = 426
+TOO_MANY_REQUESTS = 429
+INTERNAL_SERVER   = 500
+
 backend = flask.Flask(__name__)
 
 
@@ -30,7 +39,7 @@ def tm_warrior() -> flask.Response:
                     pass
 
                 except Exception:
-                    return flask.Response(status=500)
+                    return '', INTERNAL_SERVER
 
     return {}
 
@@ -42,20 +51,20 @@ def tm_warrior_add_club_campaign() -> flask.Response:
     campaign_id: int = flask.request.args.get('campaign_id', 0, int)
 
     if not club_id:
-        return 'missing/invalid parameter "club_id"', 400
+        return 'missing/invalid parameter "club_id"', BAD_REQUEST
 
     if not campaign_id:
-        return 'missing/invalid parameter "campaign_id"', 400
+        return 'missing/invalid parameter "campaign_id"', BAD_REQUEST
 
     tokens: dict = api.get_tokens()
     if not api.add_warriors_club_campaign(tokens, club_id, campaign_id):
-        return 'adding failed', 500
+        return 'adding failed', INTERNAL_SERVER
 
     files.warriors_to_json()
     if not github.send_warrior():
-        return 'sending to github failed', 500
+        return 'sending to github failed', INTERNAL_SERVER
 
-    return flask.Response(status=200)
+    return '', OK
 
 
 @backend.route('/tm/warrior/calc')
