@@ -1,6 +1,9 @@
 # c 2025-02-16
 # m 2025-10-27
 
+import time
+import uuid
+
 import flask
 
 import api
@@ -65,6 +68,54 @@ def tm_warrior_add_club_campaign() -> flask.Response:
         return 'sending to github failed', INTERNAL_SERVER
 
     return '', OK
+
+
+@backend.route('/tm/warrior/auth', methods=['GET', 'POST'])
+@backend.route('/tm/warrior/auth/', methods=['GET', 'POST'])
+def tm_warrior_auth() -> flask.Response:
+    '''
+    get w/ token      -> only token check
+    get w/ account id -> only ban check
+    post              -> new token
+    '''
+
+    id: str = flask.request.args.get('accountId', '', str)
+
+    if flask.request.method == 'POST':
+        if not id:
+            return 'account ID missing', BAD_REQUEST
+
+        token = str(uuid.uuid4())
+        expiry = int(time.time()) + 86400
+        import datetime as dt
+        expiry_utc: str = dt.datetime.fromtimestamp(expiry, dt.timezone.utc).strftime('%F %T')
+        # print(f'generated token {token}, expires at {expiry_utc}Z')
+
+        with files.Cursor(FILE_DB) as db:
+            import datetime as dt
+            db.execute(f'REPLACE INTO WarriorTokens (accountId, expiry, expiryUtc, token) VALUES ("{id}", {expiry}, "{expiry_utc}", "{token}");')
+
+        return {'token': token, 'expiry': expiry}
+
+    if id:
+        with files.Cursor(FILE_DB) as db:
+            if db.execute(f'SELECT * FROM WarriorBanned WHERE accountId="{id}";').fetchone():
+                return 'banned', FORBIDDEN
+            return '', NO_CONTENT
+
+    token: str = flask.request.args.get('token', '', str)
+    if not token:
+        return 'token missing', BAD_REQUEST
+
+    with files.Cursor(FILE_DB) as db:
+        try:
+            row = dict(db.execute(f'SELECT * FROM WarriorTokens WHERE token="{token}";').fetchone())
+            if row['expiry'] > int(time.time()):
+                return {'token': token, 'expiry': row['expiry']}
+
+        except Exception as e:
+            print(f'exception: {e}')
+            return '', INTERNAL_SERVER
 
 
 @backend.route('/tm/warrior/calc')
