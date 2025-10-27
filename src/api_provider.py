@@ -15,7 +15,7 @@ backend = flask.Flask(__name__)
 
 @backend.route('/tm/warrior')
 @backend.route('/tm/warrior/')
-def tm_warrior():
+def tm_warrior() -> flask.Response:
     uid: None | str = flask.request.args.get('uid', None, str)
 
     if uid and 24 <= len(uid) <= 27:
@@ -60,6 +60,7 @@ def tm_warrior_add_club_campaign() -> flask.Response:
 
 @backend.route('/tm/warrior/calc')
 @backend.route('/tm/warrior/calc/')
+def tm_warrior_calc() -> flask.Response:
     at: None | int = flask.request.args.get('at', None, int)
     wr: None | int = flask.request.args.get('wr', None, int)
     factor: None | float = flask.request.args.get('factor', None, float)
@@ -72,7 +73,7 @@ def tm_warrior_add_club_campaign() -> flask.Response:
 
 @backend.route('/tm/warrior/next')
 @backend.route('/tm/warrior/next/')
-def tm_warrior_next() -> list[int]:
+def tm_warrior_next() -> flask.Response:
     return [files.get_next_warrior()]
 
 
