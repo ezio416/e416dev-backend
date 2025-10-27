@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-08-15
+# m 2025-10-27
 
 import multiprocessing
 import os
@@ -62,4 +62,4 @@ def backend() -> None:
 
 if __name__ == '__main__':
     multiprocessing.Process(target=backend).start()
-    api_provider.provider.run('0.0.0.0', 4161)
+    api_provider.backend.run('0.0.0.0', 4161)

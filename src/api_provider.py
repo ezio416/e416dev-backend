@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-08-11
+# m 2025-10-27
 
 import flask
 
@@ -10,11 +10,11 @@ import github
 import utils
 
 
-provider = flask.Flask(__name__)
+backend = flask.Flask(__name__)
 
 
-@provider.route('/tm/warrior')
-@provider.route('/tm/warrior/')
+@backend.route('/tm/warrior')
+@backend.route('/tm/warrior/')
 def tm_warrior():
     uid: None | str = flask.request.args.get('uid', None, str)
 
@@ -35,8 +35,8 @@ def tm_warrior():
     return {}
 
 
-@provider.route('/tm/warrior/add_club_campaign', methods=['POST'])
-@provider.route('/tm/warrior/add_club_campaign/', methods=['POST'])
+@backend.route('/tm/warrior/add_club_campaign', methods=['POST'])
+@backend.route('/tm/warrior/add_club_campaign/', methods=['POST'])
 def tm_warrior_add_club_campaign() -> flask.Response:
     club_id: int = flask.request.args.get('club_id', 0, int)
     campaign_id: int = flask.request.args.get('campaign_id', 0, int)
@@ -58,9 +58,8 @@ def tm_warrior_add_club_campaign() -> flask.Response:
     return flask.Response(status=200)
 
 
-@provider.route('/tm/warrior/calc')
-@provider.route('/tm/warrior/calc/')
-def tm_warrior_calc() -> list[int]:
+@backend.route('/tm/warrior/calc')
+@backend.route('/tm/warrior/calc/')
     at: None | int = flask.request.args.get('at', None, int)
     wr: None | int = flask.request.args.get('wr', None, int)
     factor: None | float = flask.request.args.get('factor', None, float)
@@ -71,11 +70,11 @@ def tm_warrior_calc() -> list[int]:
     return [0]
 
 
-@provider.route('/tm/warrior/next')
-@provider.route('/tm/warrior/next/')
+@backend.route('/tm/warrior/next')
+@backend.route('/tm/warrior/next/')
 def tm_warrior_next() -> list[int]:
     return [files.get_next_warrior()]
 
 
 if __name__ == '__main__':
-    provider.run('127.0.0.1', 4161, True)
+    backend.run('127.0.0.1', 4161, True)
