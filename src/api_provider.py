@@ -132,6 +132,68 @@ def tm_warrior_calc() -> flask.Response:
     return [0]
 
 
+@backend.route('/tm/warrior/message',  methods=['GET'])
+@backend.route('/tm/warrior/message/', methods=['GET'])
+def tm_warrior_message_get() -> flask.Response:
+    account_id: str = flask.request.args.get('accountId', '', str)
+    if len(account_id) != 36:
+        return 'accountId missing/malformed', BAD_REQUEST
+
+    messages: list[dict] = []
+
+    def add_message(message: dict) -> None:
+        message.pop('accountId')
+        message.pop('timestampUtc')
+        message.pop('type')
+        messages.append(message)
+
+    with files.Cursor(FILE_DB) as db:
+        for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="any" AND type="out";').fetchall():
+            add_message(dict(row))
+
+        for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="{account_id}" AND type="out";').fetchall():
+            add_message(dict(row))
+
+    return messages
+
+
+@backend.route('/tm/warrior/message',  methods=['POST'])
+@backend.route('/tm/warrior/message/', methods=['POST'])
+def tm_warrior_message_post() -> flask.Response:
+    account_id: str = flask.request.args.get('accountId', '', str)
+    if len(account_id) != 36:
+        return 'accountId missing/malformed', BAD_REQUEST
+
+    message: dict = flask.request.get_json()
+
+    id: int = -1
+
+    with files.Cursor(FILE_DB) as db:
+        id = dict(db.execute(f'SELECT * FROM WarriorMessages ORDER BY id DESC;').fetchone())['id'] + 1
+
+        db.execute(f'''
+            INSERT INTO WarriorMessages (
+                accountId,
+                id,
+                message,
+                subject,
+                timestamp,
+                timestampUtc,
+                type
+            ) VALUES (
+                "{account_id}",
+                {id},
+                "{message['message']}",
+                "{message['subject']}",
+                "{message['timestamp']}",
+                "{dt.datetime.fromtimestamp(message['timestamp'], dt.timezone.utc).strftime('%F %T')}",
+                "in"
+            );
+        ''')
+
+    return [id], OK
+
+
 @backend.route('/tm/warrior/next')
 @backend.route('/tm/warrior/next/')
 def tm_warrior_next() -> flask.Response:
