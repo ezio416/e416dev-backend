@@ -116,6 +116,8 @@ def tables_to_json() -> None:
 def warriors_to_json() -> None:
     warriors: dict = {}
 
+    warriors['next'] = get_next_warrior()
+
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
 
