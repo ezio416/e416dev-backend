@@ -1,6 +1,7 @@
 # c 2025-02-16
-# m 2025-10-27
+# m 2025-10-30
 
+import datetime as dt
 import time
 import uuid
 
@@ -87,15 +88,13 @@ def tm_warrior_auth() -> flask.Response:
 
         token = str(uuid.uuid4())
         expiry = int(time.time()) + 86400
-        import datetime as dt
         expiry_utc: str = dt.datetime.fromtimestamp(expiry, dt.timezone.utc).strftime('%F %T')
         # print(f'generated token {token}, expires at {expiry_utc}Z')
 
         with files.Cursor(FILE_DB) as db:
-            import datetime as dt
-            db.execute(f'REPLACE INTO WarriorTokens (accountId, expiry, expiryUtc, token) VALUES ("{id}", {expiry}, "{expiry_utc}", "{token}");')
+            db.execute(f'INSERT INTO WarriorTokens (accountId, expiry, expiryUtc, token) VALUES ("{id}", {expiry}, "{expiry_utc}", "{token}");')
 
-        return {'token': token, 'expiry': expiry}
+        return {'accountId': id, 'expiry': expiry, 'token': token}
 
     if id:
         with files.Cursor(FILE_DB) as db:
@@ -110,8 +109,10 @@ def tm_warrior_auth() -> flask.Response:
     with files.Cursor(FILE_DB) as db:
         try:
             row = dict(db.execute(f'SELECT * FROM WarriorTokens WHERE token="{token}";').fetchone())
+            if not row:
+                return 'token invalid', UNAUTHORIZED
             if row['expiry'] > int(time.time()):
-                return {'token': token, 'expiry': row['expiry']}
+                return {'accountId': row['accountId'], 'expiry': row['expiry'], 'token': token}
 
         except Exception as e:
             print(f'exception: {e}')
