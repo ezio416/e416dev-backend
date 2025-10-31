@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-10-30
+# m 2025-10-31
 
 import datetime as dt
 import time
@@ -143,14 +143,15 @@ def tm_warrior_message_get() -> flask.Response:
 
     def add_message(message: dict) -> None:
         message.pop('accountId')
+        message.pop('mapUid')
         message.pop('timestampUtc')
-        message.pop('type')
         messages.append(message)
 
     with files.Cursor(FILE_DB) as db:
         for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="any" AND type="out";').fetchall():
             add_message(dict(row))
-
+        for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="any" AND type="notice";').fetchall():
+            add_message(dict(row))
         for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="{account_id}" AND type="out";').fetchall():
             add_message(dict(row))
 
@@ -165,6 +166,7 @@ def tm_warrior_message_post() -> flask.Response:
         return 'accountId missing/malformed', BAD_REQUEST
 
     message: dict = flask.request.get_json()
+    timestamp: int = int(time.time())
 
     id: int = -1
 
@@ -185,8 +187,8 @@ def tm_warrior_message_post() -> flask.Response:
                 {id},
                 "{message['message']}",
                 "{message['subject']}",
-                "{message['timestamp']}",
-                "{dt.datetime.fromtimestamp(message['timestamp'], dt.timezone.utc).strftime('%F %T')}",
+                "{timestamp}",
+                "{dt.datetime.fromtimestamp(timestamp, dt.timezone.utc).strftime('%F %T')}",
                 "in"
             );
         ''')
