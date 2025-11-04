@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-10-31
+# m 2025-11-04
 
 import datetime as dt
 import time
@@ -153,6 +153,8 @@ def tm_warrior_message_get() -> flask.Response:
         for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="any" AND type="notice";').fetchall():
             add_message(dict(row))
         for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="{account_id}" AND type="out";').fetchall():
+            add_message(dict(row))
+        for row in db.execute(f'SELECT * FROM WarriorMessages WHERE accountId="{account_id}" AND type="notice";').fetchall():
             add_message(dict(row))
 
     return messages
