@@ -12,6 +12,79 @@ import github
 import utils
 
 
+def process_icy_f25() -> None:
+    def load_csv() -> list:
+        data: list = []
+
+        with open('data/icy_f25.csv') as f:
+            for i, line in enumerate(csv.reader(f)):
+                if not i:
+                    continue
+
+                data.append(line)
+
+        return data
+
+    maps: dict = {}
+
+    for map in load_csv():
+        uid: str = map[0]
+        maps[uid] = {}
+        maps[uid]['wt'] = int(map[1])
+
+    uids: list[str] = list(maps)
+
+    import nadeo_api
+    nadeo_api.config.debug_logging = True
+
+    token: auth.Token = get_token_core()
+    info: list[dict] = core.get_map_info(token, uids)
+
+    for map in info:
+        uid: str = map['mapUid']
+        maps[uid]['at']   = map['authorScore']
+        maps[uid]['gt']   = map['goldScore']
+        maps[uid]['id']   = map['mapId']
+        maps[uid]['name'] = map['name']
+
+    club_id:       int = 84969
+    club_name:     str = 'Icy Campaign'
+    campaign_id:   int =  112251
+    campaign_name: str = 'Icy Fall 2025'
+
+    print('writing db')
+
+    with Cursor(FILE_DB) as db:
+        for uid, map in maps.items():
+            db.execute(f'''
+                INSERT INTO WarriorOther (
+                    authorTime,
+                    goldTime,
+                    mapId,
+                    mapUid,
+                    campaignId,
+                    campaignName,
+                    clubId,
+                    clubName,
+                    name,
+                    warriorTime
+                ) VALUES (
+                    {map['at']},
+                    {map['gt']},
+                    "{map['id']}",
+                    "{uid}",
+                    {campaign_id},
+                    "{campaign_name}",
+                    {club_id},
+                    "{club_name}",
+                    "{map['name']}",
+                    {map['wt']}
+                )
+            ''')
+
+    ...
+
+
 def process_u10s() -> None:
     def load_csv() -> dict:
         data: list = []
