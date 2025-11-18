@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-11
+# m 2025-11-11
 
 import csv
 
@@ -93,6 +93,9 @@ def main() -> None:
     # rewrite_timestamps()
 
     # req = live.get_map_leaderboard(api.get_token_live(), 'F6B8jSu7umawah4kA5fssf8ro7d', length=20)  # please cheat this map
+
+    # api.add_warriors_club_campaign(api.get_tokens(), 65094, 104293)  # microk 6
+    # warriors_to_github()
 
     pass
 
