@@ -1,9 +1,9 @@
 # c 2025-01-27
-# m 2025-11-11
+# m 2025-11-18
 
 import csv
 
-from nadeo_api import auth, config, live
+from nadeo_api import auth, config, core, live
 
 import api
 from constants import *
@@ -37,7 +37,7 @@ def process_icy_f25() -> None:
     import nadeo_api
     nadeo_api.config.debug_logging = True
 
-    token: auth.Token = get_token_core()
+    token: auth.Token = api.get_token_core()
     info: list[dict] = core.get_map_info(token, uids)
 
     for map in info:
@@ -54,7 +54,7 @@ def process_icy_f25() -> None:
 
     print('writing db')
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for uid, map in maps.items():
             db.execute(f'''
                 INSERT INTO WarriorOther (
