@@ -1,48 +1,65 @@
 # c 2024-12-26
-# m 2025-04-03
+# m 2025-10-27
 
-from multiprocessing import Process
+import multiprocessing
+import os
 import time
 
-from api import get_tokens
-from api_provider import provider
-from files import tables_to_json, warriors_to_json
-from github import *
-from schedules import *
-from webhooks import *
+from nadeo_api import auth
+import nadeo_api.config
+
+import api
+import api_provider
+from constants import *
+import errors
+import files
+import github
+import schedules
+import utils
+import webhooks
 
 
 def backend() -> None:
-    tokens = get_tokens()
+    tokens: dict[str, auth.Token] = api.get_tokens()
+
+    nadeo_api.config.wait_between_requests_ms = 500
 
     while True:
         time.sleep(1)
-        ts = stamp()
-        log('loop', log_file=False)
+        now: int = utils.stamp()
+        utils.log('loop', log_file=False)
 
-        for audience, token in tokens.items():  # bandaid
-            if audience != 'oauth' and time.time() + (15 * 60) > token.expiration:
-                log(f'{audience} token is 15 minutes to expiry')
-                token.refresh()
+        while not os.path.isfile(FILE_DB):
+            utils.log('warn: db file not found')
+            time.sleep(1)
 
-        if any((
-            schedule(tokens, 'next_seasonal', ts, schedule_seasonal_maps, 'Seasonal', webhook_seasonal),
-            schedule(tokens, 'next_totd',     ts, schedule_totd_maps,     'Totd',     webhook_totd),
-            schedule(tokens, 'next_weekly',   ts, schedule_weekly_maps,   'Weekly',   webhook_weekly),
-            # schedule(tokens, 'next_royal',    ts, schedule_royal_maps,    'Royal',    webhook_royal),
-        )):
-            tables_to_json()
-            to_github()
+        try:
+            for audience, token in tokens.items():  # bandaid
+                if audience != 'oauth' and now + utils.minutes_to_seconds(15) > token.expiration:
+                    utils.log(f'warn: {audience} token is 15 minutes to expiry, refreshing...')
+                    token.refresh()
 
-        if any((
-            schedule_warriors(tokens, 'warrior_seasonal', ts, schedule_seasonal_warriors, webhook_seasonal_warriors),
-            schedule_warriors(tokens, 'warrior_totd',     ts, schedule_totd_warrior,      webhook_totd_warrior),
-            schedule_warriors(tokens, 'warrior_weekly',   ts, schedule_weekly_warriors,   webhook_weekly_warriors),
-        )):
-            warriors_to_json()
-            to_github()
+            if any((
+                schedules.schedule(tokens, 'seasonal', schedules.seasonal, webhooks.seasonal),
+                schedules.schedule(tokens, 'totd',     schedules.totd,     webhooks.totd),
+                schedules.schedule(tokens, 'weekly',   schedules.weekly,   webhooks.weekly),
+                schedules.schedule(tokens, 'zone',     schedules.zone,     None)
+            )):
+                files.tables_to_json()
+                github.send_regular()
+
+            if any((
+                schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors, True),
+                schedules.schedule(tokens, 'totd',     schedules.totd_warrior,      webhooks.totd_warrior,      True),
+                schedules.schedule(tokens, 'weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors,   True),
+            )):
+                files.warriors_to_json()
+                github.send_warrior()
+
+        except Exception as e:
+            errors.error(e)
 
 
 if __name__ == '__main__':
-    Process(target=backend).start()
-    provider.run('0.0.0.0', 4161)
+    multiprocessing.Process(target=backend).start()
+    api_provider.backend.run('0.0.0.0', 4161)

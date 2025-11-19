@@ -1,125 +1,77 @@
 # c 2025-01-27
-# m 2025-07-19
+# m 2025-08-10
 
+import json
+import typing
 import zipfile
 
-from nadeo_api import live
+from nadeo_api import core, live
 
-from api import get_map_infos
-from errors import safelogged
-from files import *
-from utils import *
-
-
-@safelogged(bool)
-def schedule_royal_maps(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
-    maps_royal: dict = live.maps_royal(tokens['live'], 99)
-
-    if os.path.isfile(FILE_ROYAL_RAW):
-        ts: int = stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/royal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
-            zip.write(FILE_ROYAL_RAW, 'royal_raw.json')
-
-    with open(FILE_ROYAL_RAW, 'w', newline='\n') as f:
-        json.dump(maps_royal, f, indent=4)
-        f.write('\n')
-
-    with Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Royal')
-        db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Royal (
-                author          CHAR(36),
-                authorTime      INT,
-                bronzeTime      INT,
-                campaignId      INT,
-                goldTime        INT,
-                mapId           CHAR(36),
-                mapUid          VARCHAR(27) PRIMARY KEY,
-                month           INT,
-                monthDay        INT,
-                name            TEXT,
-                number          INT,
-                silverTime      INT,
-                submitter       CHAR(36),
-                timestampEnd    INT,
-                timestampStart  INT,
-                timestampUpload INT,
-                weekDay         INT,
-                year            INT
-            );
-        ''')
-
-        mapUids: set = set()
-
-        number: int = 0
-
-        for month in reversed(maps_royal['monthList']):
-            for map in month['days']:
-                mapUid: str = map['mapUid']
-                if len(mapUid) == 0:
-                    break
-
-                if mapUid in mapUids:
-                    # log(f'schedule_royal_maps duplicate: {mapUid}')
-                    continue
-                else:
-                    mapUids.add(mapUid)
-
-                number += 1
-                db.execute(f'''
-                    INSERT INTO Royal (
-                        campaignId,
-                        mapUid,
-                        month,
-                        monthDay,
-                        number,
-                        timestampEnd,
-                        timestampStart,
-                        weekDay,
-                        year
-                    ) VALUES (
-                        "{map['campaignId']}",
-                        "{mapUid}",
-                        "{month['month']}",
-                        "{map['monthDay']}",
-                        "{number}",
-                        "{map['endTimestamp']}",
-                        "{map['startTimestamp']}",
-                        "{map['day']}",
-                        "{month['year']}"
-                    )
-                ''')
-
-    write_db_key_val('next_royal', maps_royal['nextRequestTimestamp'])
-    return True
+import api
+from constants import *
+import errors
+import files
+import utils
 
 
-@safelogged(bool)
-def schedule_seasonal_maps(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
-    maps_seasonal: dict = live.maps_campaign(tokens['live'], 99)
+@errors.safelogged(bool, log=False)
+def schedule(tokens: dict, table: str, schedule_func: typing.Callable[[dict], bool], webhook_func: typing.Callable[[dict], None] | None, warrior: bool = False) -> bool:
+    next_key: str = f'next_{'warrior_' if warrior else ''}{table}'
+    next: int = files.read_timestamp(next_key)
+    retry_key: str = f'retry_{'warrior_' if warrior else ''}{table}'
+    retry: int = files.read_timestamp(retry_key)
+
+    now: int = utils.stamp()
+    if now < next and now < retry:
+        return False
+
+    if schedule_func(tokens):
+        utils.log(f'info: {table} {'warrior' if warrior else 'schedule'} success')
+        files.write_timestamp(retry_key, MAX_TIMESTAMP)
+        if webhook_func:
+            webhook_func(tokens)
+        return True
+
+    else:
+        utils.log(f'warn: {table} {'warrior' if warrior else 'schedule'} FAILURE')
+        files.write_timestamp(next_key, MAX_TIMESTAMP)
+        files.write_timestamp(retry_key, now + utils.minutes_to_seconds(1))
+        return False
+
+
+@errors.safelogged(bool)
+def seasonal(tokens: dict) -> bool:
+    next_seasonal: int = files.read_timestamp('next_seasonal')
+    if 0 < next_seasonal < MAX_TIMESTAMP:
+        files.write_timestamp('next_warrior_seasonal', next_seasonal + utils.weeks_to_seconds(2))
+
+    maps_seasonal: dict = live.get_maps_seasonal(tokens['live'], 144)
 
     if os.path.isfile(FILE_SEASONAL_RAW):
-        ts: int = stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/seasonal_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/seasonal_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
             zip.write(FILE_SEASONAL_RAW, 'seasonal_raw.json')
 
     with open(FILE_SEASONAL_RAW, 'w', newline='\n') as f:
         json.dump(maps_seasonal, f, indent=4)
         f.write('\n')
 
-    with Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Seasonal')
+    TABLE: str = 'Seasonal'
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Seasonal (
+            CREATE TABLE IF NOT EXISTS {TABLE} (
                 author               CHAR(36),
                 authorTime           INT,
                 bronzeTime           INT,
                 campaignId           INT,
                 campaignIndex        INT,
                 goldTime             INT,
-                leaderboardGroupUid  CHAR(36),
                 mapId                CHAR(36),
                 mapIndex             INT,
                 mapUid               VARCHAR(27) PRIMARY KEY,
@@ -130,7 +82,6 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
                 submitter            CHAR(36),
                 timestampEdition     INT,
                 timestampEnd         INT,
-                timestampPublished   INT,
                 timestampRankingSent INT,
                 timestampStart       INT,
                 timestampUpload      INT
@@ -138,66 +89,65 @@ def schedule_seasonal_maps(tokens: dict) -> bool:
         ''')
 
         for i, campaign in enumerate(reversed(maps_seasonal['campaignList'])):
-            timestampRankingSent: int | None = campaign['rankingSentTimestamp']
+            sent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
                 db.execute(f'''
-                    INSERT INTO Seasonal (
+                    INSERT INTO {TABLE} (
                         campaignId,
                         campaignIndex,
-                        leaderboardGroupUid,
                         mapIndex,
                         mapUid,
                         number,
                         seasonUid,
                         timestampEdition,
                         timestampEnd,
-                        timestampPublished,
                         timestampRankingSent,
                         timestampStart
                     ) VALUES (
                         "{campaign['id']}",
                         "{i}",
-                        "{campaign['leaderboardGroupUid']}",
                         "{map['position']}",
                         "{map['mapUid']}",
                         "{i * 25 + map['position'] + 1}",
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
-                        "{campaign['publicationTimestamp']}",
-                        {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
+                        {f'"{sent}"' if sent else 0},
                         "{campaign['startTimestamp']}"
-                    )
+                    );
                 ''')
 
-    write_db_key_val('warrior_seasonal', int(read_db_key_val('next_seasonal')) + 60*60*24*14)
-    write_db_key_val('next_seasonal', maps_seasonal['nextRequestTimestamp'])
-    return True
+    # different order below from totd/weekly since the next totd/weekly is almost always exactly a day/week away
+    # better to handle it automatically and only fix manually if it happens to fail around DST
+
+    if maps_seasonal['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_seasonal', maps_seasonal['nextRequestTimestamp'])
+    else:
+        files.write_timestamp('next_seasonal', MAX_TIMESTAMP)
+        errors.notify(f'seasonal nextRequestTimestamp invalid: {maps_seasonal['nextRequestTimestamp']}')
+
+    return api.get_map_infos(tokens, TABLE)
 
 
-@safelogged(bool)
-def schedule_seasonal_warriors(tokens: dict) -> bool:
+@errors.safelogged(bool)
+def seasonal_warriors(tokens: dict) -> bool:
     maps: dict = {}
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
-            map = dict(entry)
+            map: dict = dict(entry)
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
-        log(f'info: getting records for "{map['name']}"')
+        utils.log(f'info: getting records for "{map['name']}"')
 
-        time.sleep(WAIT_TIME)
-        req: dict = live.get(
-            tokens['live'],
-            f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
-        )
+        req: dict = live.get_map_leaderboard(tokens['live'], uid, length=10)
 
-        maps[uid]['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
-        maps[uid]['warriorTime'] = calc_warrior_time(map['authorTime'], map['worldRecord'])
+        maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
+        maps[uid]['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'])
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorSeasonal (
                 authorTime  INT,
@@ -229,35 +179,46 @@ def schedule_seasonal_warriors(tokens: dict) -> bool:
                     "{map['campaignId']}",
                     "{map['mapUid']}",
                     "{map['name']}",
-                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
                     "{map['mapId']}",
                     "{map['goldTime']}"
-                )
+                );
             ''')
+
+    files.write_timestamp('next_warrior_seasonal', files.read_timestamp('next_seasonal') + utils.weeks_to_seconds(2))
 
     return True
 
 
-@safelogged(bool)
-def schedule_totd_maps(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
-    maps_totd: dict = live.maps_totd(tokens['live'], 99)
+@errors.safelogged(bool)
+def totd(tokens: dict) -> bool:
+    next_totd: int = files.read_timestamp('next_totd')
+    if 0 < next_totd < MAX_TIMESTAMP:
+        files.write_timestamp('next_warrior_totd', next_totd + utils.hours_to_seconds(2))
+
+    maps_totd: dict = live.get_maps_totd(tokens['live'], 144)
 
     if os.path.isfile(FILE_TOTD_RAW):
-        ts: int = stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/totd_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/totd_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
             zip.write(FILE_TOTD_RAW, 'totd_raw.json')
 
     with open(FILE_TOTD_RAW, 'w', newline='\n') as f:
         json.dump(maps_totd, f, indent=4)
         f.write('\n')
 
-    with Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Totd')
+    TABLE: str = 'Totd'
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Totd (
+            CREATE TABLE IF NOT EXISTS {TABLE} (
                 author          CHAR(36),
                 authorTime      INT,
                 bronzeTime      INT,
@@ -285,12 +246,12 @@ def schedule_totd_maps(tokens: dict) -> bool:
         for month in reversed(maps_totd['monthList']):
             for map in month['days']:
                 mapUid: str = map['mapUid']
-                if len(mapUid) == 0:
+                if not len(mapUid):
                     break
 
                 number += 1
                 db.execute(f'''
-                    INSERT INTO Totd (
+                    INSERT INTO {TABLE} (
                         campaignId,
                         mapUid,
                         month,
@@ -312,33 +273,34 @@ def schedule_totd_maps(tokens: dict) -> bool:
                         "{map['startTimestamp']}",
                         "{map['day']}",
                         "{month['year']}"
-                    )
+                    );
                 ''')
 
-    last_totd: int = int(read_db_key_val('next_totd'))
-    write_db_key_val('warrior_totd', last_totd + 60*60*2)
-    # write_db_key_val('next_totd', maps_totd['nextRequestTimestamp'])  # returns -1 as of 2025-06-22
-    write_db_key_val('next_totd', last_totd + 86400)  # will break for daylight savings
+    if not api.get_map_infos(tokens, TABLE):
+        return False
+
+    if maps_totd['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_totd', maps_totd['nextRequestTimestamp'])
+    else:
+        files.write_timestamp('next_totd', next_totd + utils.days_to_seconds(1))
+        errors.notify(f'totd nextRequestTimestamp invalid: {maps_totd['nextRequestTimestamp']}')
+
     return True
 
 
-@safelogged(bool)
-def schedule_totd_warrior(tokens: dict) -> bool:
-    with Cursor(FILE_DB) as db:
+@errors.safelogged(bool)
+def totd_warrior(tokens: dict) -> bool:
+    with files.Cursor(FILE_DB) as db:
         map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
 
-    log(f'info: getting records for TOTD {map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}')
+    utils.log(f'info: getting records for TOTD {map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}')
 
-    time.sleep(WAIT_TIME)
-    req: dict = live.get(
-        tokens['live'],
-        f'api/token/leaderboard/group/Personal_Best/map/{map['mapUid']}/top'
-    )
+    req: dict = live.get_map_leaderboard(tokens['live'], map['mapUid'], length=10)
 
-    map['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
-    map['warriorTime'] = calc_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
+    map['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
+    map['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'], 0.125)
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorTotd (
                 authorTime  INT,
@@ -369,35 +331,44 @@ def schedule_totd_warrior(tokens: dict) -> bool:
                 "{map['year']}-{str(map['month']).zfill(2)}-{str(map['monthDay']).zfill(2)}",
                 "{map['mapUid']}",
                 "{map['name']}",
-                {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
                 "{map['warriorTime']}",
                 "{map['worldRecord']}",
                 "{map['mapId']}",
                 "{map['goldTime']}"
-            )
+            );
         ''')
+
+    files.write_timestamp('next_warrior_totd', files.read_timestamp('next_totd') + utils.hours_to_seconds(2))
 
     return True
 
 
-@safelogged(bool)
-def schedule_weekly_maps(tokens: dict) -> bool:
-    time.sleep(WAIT_TIME)
-    maps_weekly: dict = live.get(tokens['live'], 'api/campaign/weekly-shorts?length=99')
+@errors.safelogged(bool)
+def weekly(tokens: dict) -> bool:
+    next_weekly: int = files.read_timestamp('next_weekly')
+
+    maps_weekly: dict = live.get_maps_weekly(tokens['live'], 144)
 
     if os.path.isfile(FILE_WEEKLY_RAW):
-        ts: int = stamp()
-        with zipfile.ZipFile(f'{DIR_DATA}/history/weekly_raw_{ts}.zip', 'w', zipfile.ZIP_LZMA, compresslevel=5) as zip:
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/weekly_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
             zip.write(FILE_WEEKLY_RAW, 'weekly_raw.json')
 
     with open(FILE_WEEKLY_RAW, 'w', newline='\n') as f:
         json.dump(maps_weekly, f, indent=4)
         f.write('\n')
 
-    with Cursor(FILE_DB) as db:
-        db.execute('DROP TABLE IF EXISTS Weekly')
+    TABLE: str = 'Weekly'
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Weekly (
+            CREATE TABLE IF NOT EXISTS {TABLE} (
                 author               CHAR(36),
                 authorTime           INT,
                 bronzeTime           INT,
@@ -422,11 +393,11 @@ def schedule_weekly_maps(tokens: dict) -> bool:
         ''')
 
         for campaign in reversed(maps_weekly['campaignList']):
-            timestampRankingSent: int | None = campaign['rankingSentTimestamp']
+            sent: int | None = campaign['rankingSentTimestamp']
 
             for map in campaign['playlist']:
                 db.execute(f'''
-                    INSERT INTO Weekly (
+                    INSERT INTO {TABLE} (
                         campaignId,
                         mapIndex,
                         mapUid,
@@ -446,40 +417,47 @@ def schedule_weekly_maps(tokens: dict) -> bool:
                         "{campaign['seasonUid']}",
                         "{campaign['editionTimestamp']}",
                         "{campaign['endTimestamp']}",
-                        {f'"{timestampRankingSent}"' if timestampRankingSent is not None else 'NULL'},
+                        {f'"{sent}"' if sent else 0},
                         "{campaign['startTimestamp']}",
                         "{campaign['week']}",
                         "{campaign['year']}"
-                    )
+                    );
                 ''')
 
-    write_db_key_val('warrior_weekly', 0)
-    write_db_key_val('next_weekly', maps_weekly['nextRequestTimestamp'])
+    if not api.get_map_infos(tokens, TABLE):
+        return False
+
+    if maps_weekly['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_weekly', maps_weekly['nextRequestTimestamp'])
+    else:
+        files.write_timestamp('next_weekly', next_weekly + utils.weeks_to_seconds(1))
+        errors.notify(f'weekly nextRequestTimestamp invalid: {maps_weekly['nextRequestTimestamp']}')
+
     return True
 
 
-@safelogged(bool)
-def schedule_weekly_warriors(tokens: dict) -> bool:
+@errors.safelogged(bool)
+def weekly_warriors(tokens: dict) -> bool:
+    next_weekly: int = files.read_timestamp('next_weekly')
+    if next_weekly == MAX_TIMESTAMP or next_weekly < utils.stamp():
+        return False  # getting new weekly maps failed?
+
     maps: dict = {}
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute('SELECT * FROM Weekly ORDER BY week DESC, mapIndex ASC;').fetchmany(10)[5:]:
-            map = dict(entry)
+            map: dict = dict(entry)
             maps[map['mapUid']] = map
 
     for uid, map in maps.items():
-        log(f'info: getting records for week {map['week']} map "{map['name']}"')
+        utils.log(f'info: getting records for week {map['week']} map "{map['name']}"')
 
-        time.sleep(WAIT_TIME)
-        req: dict = live.get(
-            tokens['live'],
-            f'api/token/leaderboard/group/Personal_Best/map/{uid}/top'
-        )
+        req: dict = live.get_map_leaderboard(tokens['live'], uid, length=10)
 
-        maps[uid]['worldRecord'] = handle_tops(req['tops'][0]['top'], map['mapUid'])
-        maps[uid]['warriorTime'] = calc_warrior_time(map['authorTime'], map['worldRecord'], 0.5)
+        maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
+        maps[uid]['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'], 0.5)
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorWeekly (
                 authorTime  INT,
@@ -515,67 +493,79 @@ def schedule_weekly_warriors(tokens: dict) -> bool:
                     "{map['mapUid']}",
                     "{map['name']}",
                     "{map['number']}",
-                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] is not None else 'NULL'},
+                    {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
                     "{map['mapId']}",
                     "{map['goldTime']}",
                     "{map['campaignId']}",
                     "{map['week']}"
-                )
+                );
             ''')
 
-    return True
-
-
-@safelogged(bool, do_log=False)
-def schedule(tokens: dict, key: str, ts: int, schedule_func, table: str, webhook_func) -> bool:
-    val: str = read_db_key_val(key)
-    if ts <= (int(val) if len(val) else 0):
-        return False
-
-    tries = 4  # total = this + 1
-    while not (success := schedule_func(tokens)) and tries:
-        log(f'error: {schedule_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
-        tries -= 1
-        time.sleep(5)
-    if not success:
-        write_db_key_val(key, ts + 60*3)
-        raise RuntimeError(f'error: {schedule_func.__name__}(), trying again in 3 minutes')
-
-    tries = 4
-    while not (success := get_map_infos(tokens, table)) and tries:
-        log(f'error: get_map_infos({table}), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
-        tries -= 1
-        time.sleep(5)
-    if not success:
-        write_db_key_val(key, ts + 60*3)
-        raise RuntimeError(f'error: get_map_infos({table}), trying again in 3 minutes')
-
-    if not webhook_func(tokens):
-        raise RuntimeError(f'error: {webhook_func.__name__}()')
+    files.write_timestamp('next_warrior_weekly', files.read_timestamp('next_weekly'))
 
     return True
 
 
-@safelogged(bool, do_log=False)
-def schedule_warriors(tokens: dict, key: str, ts: int, warrior_func, webhook_func) -> bool:
-    val: str = read_db_key_val(key)
-    if ts <= (int(val) if len(val) else 0):
-        return False
+@errors.safelogged(bool)
+def zone(tokens: dict) -> bool:
+    zones_raw: dict = core.get_zones(tokens['core'])
 
-    tries = 4  # total = this + 1
-    while not (success := warrior_func(tokens)) and tries:
-        log(f'error: {warrior_func.__name__}(), waiting... (trying {tries} more time{'s' if tries != 1 else ''})')
-        tries -= 1
-        time.sleep(5)
-    if not success:
-        write_db_key_val(key, ts + 60*3)
-        raise RuntimeError(f'error: {warrior_func.__name__}(), trying again in 3 minutes')
+    if os.path.isfile(FILE_ZONE_RAW):
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/zone_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
+            zip.write(FILE_ZONE_RAW, 'zone_raw.json')
 
-    if not webhook_func():
-        raise RuntimeError(f'error: {webhook_func.__name__}()')
+    with open(FILE_ZONE_RAW, 'w', newline='\n') as f:
+        json.dump(zones_raw, f, indent=4)
+        f.write('\n')
 
-    write_db_key_val(key, 2_147_000_000)
+    zones: dict = {zone['zoneId']: zone for zone in zones_raw}
+
+    for _, zone in zones.items():
+        zone['parent'] = zones[zone['parentId']] if zone['parentId'] in zones else None
+
+    for _, zone in zones.items():
+        zone['parents'] = [zone['name']]
+        parent: dict = zone['parent']
+        while parent:
+            zone['parents'].append(parent['name'])
+            parent = parent['parent']
+        zone['path'] = ' | '.join(zone['parents'][:-1])
+
+    TABLE: str = 'Zone'
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
+        db.execute(f'''
+            CREATE TABLE IF NOT EXISTS {TABLE} (
+                name     TEXT,
+                parentId CHAR(36),
+                path     TEXT,
+                zoneId   CHAR(36) PRIMARY KEY
+            );
+        ''')
+
+        for zoneId, zone in zones.items():
+            db.execute(f'''
+                INSERT INTO {TABLE} (
+                    name,
+                    parentId,
+                    path,
+                    zoneId
+                ) VALUES (
+                    "{zone['name']}",
+                    "{zone['parentId'] if zone['parentId'] else ''}",
+                    "{zone['path']}",
+                    "{zoneId}"
+                );
+            ''')
+
+    files.write_timestamp('next_zone', files.read_timestamp('next_zone') + utils.weeks_to_seconds(1))
 
     return True

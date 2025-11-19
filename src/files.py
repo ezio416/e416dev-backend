@@ -1,9 +1,14 @@
 # c 2025-01-27
-# m 2025-05-22
+# m 2025-10-29
 
-from errors import safelogged
-from types import TracebackType
-from utils import *
+import datetime as dt
+import json
+import sqlite3 as sql
+import types
+
+from constants import *
+import errors
+import utils
 
 
 class Cursor:
@@ -12,16 +17,16 @@ class Cursor:
     '''
 
     def __init__(self, path: str) -> None:
-        self.path = path
+        self.path: str = path
 
-    def __enter__(self):
-        self.con = sql.connect(self.path)
+    def __enter__(self) -> sql.Cursor:
+        self.con: sql.Connection = sql.connect(self.path)
         self.con.row_factory = sql.Row
-        self.cur = self.con.cursor()
+        self.cur: sql.Cursor = self.con.cursor()
         self.cur.execute('BEGIN')
         return self.cur
 
-    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: TracebackType) -> None:
+    def __exit__(self, exc_type: type, exc_val: Exception, exc_tb: types.TracebackType) -> None:
         self.cur.close()
 
         if exc_type is exc_val is exc_tb is None:
@@ -32,75 +37,68 @@ class Cursor:
         self.con.close()
 
 
-@safelogged()
-def handle_tops(tops: list[dict], uid: str) -> int:
+def get_next_warrior() -> int:
+    seasonal: int = read_timestamp('next_warrior_seasonal')
+    seasonal = seasonal if seasonal else MAX_TIMESTAMP
+
+    totd: int = read_timestamp('next_warrior_totd')
+    totd = totd if totd else MAX_TIMESTAMP
+
+    weekly: int = read_timestamp('next_warrior_weekly')
+    weekly = weekly if weekly else MAX_TIMESTAMP
+
+    return min(seasonal, totd, weekly)
+
+
+@errors.safelogged(int)
+def handle_tops(tops: list[dict], uid: str, name: str) -> int:
+    for top in tops:
+        top.pop('timestamp')
+        top.pop('zoneId')
+        top.pop('zoneName')
+
     with Cursor(FILE_DB) as db:
         db.execute(f'''
-            CREATE TABLE IF NOT EXISTS Tops (
-                timestamp INT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS Tops2 (
+                mapName   TEXT,
                 mapUid    VARCHAR(27),
-                score1    INT,
-                score2    INT,
-                score3    INT,
-                score4    INT,
-                score5    INT,
-                account1  TEXT,
-                account2  TEXT,
-                account3  TEXT,
-                account4  TEXT,
-                account5  TEXT
+                timestamp INT,
+                tops      TEXT
             );
         ''')
 
         db.execute(f'''
-            INSERT INTO Tops (
-                timestamp,
+            INSERT INTO Tops2 (
+                mapName,
                 mapUid,
-                score1,
-                score2,
-                score3,
-                score4,
-                score5,
-                account1,
-                account2,
-                account3,
-                account4,
-                account5
+                timestamp,
+                tops
             ) VALUES (
-                "{stamp()}",
+                "{utils.strip_format_codes(name)}",
                 "{uid}",
-                "{tops[0]['score']}",
-                "{tops[1]['score']}",
-                "{tops[2]['score']}",
-                "{tops[3]['score']}",
-                "{tops[4]['score']}",
-                "{tops[0]['accountId']}",
-                "{tops[1]['accountId']}",
-                "{tops[2]['accountId']}",
-                "{tops[3]['accountId']}",
-                "{tops[4]['accountId']}"
-            )
+                {utils.stamp()},
+                "{str(tops)}"
+            );
         ''')
 
     return tops[0]['score']
 
 
-@safelogged(str, True)
-def read_db_key_val(key: str) -> str:
-    with Cursor(FILE_DB) as db:
-        return db.execute(f'SELECT * FROM KeyVals WHERE key = "{key}"').fetchone()[1]
-
-
-@safelogged(list)
+@errors.safelogged(list, log=False)
 def read_table(table: str) -> list[dict]:
     with Cursor(FILE_DB) as db:
         return [dict(item) for item in db.execute(f'SELECT * FROM {table}').fetchall()]
 
 
-@safelogged()
+@errors.safelogged(int, log=False)
+def read_timestamp(key: str) -> int:
+    with Cursor(FILE_DB) as db:
+        return db.execute(f'SELECT * FROM Timestamps WHERE key = "{key}"').fetchone()[1]
+
+
+@errors.safelogged()
 def tables_to_json() -> None:
     for table_name, output_file in (
-        ('Royal',    FILE_ROYAL),
         ('Seasonal', FILE_SEASONAL),
         ('Totd',     FILE_TOTD),
         ('Weekly',   FILE_WEEKLY),
@@ -109,47 +107,30 @@ def tables_to_json() -> None:
             json.dump({item['mapUid']: item for item in read_table(table_name)}, f, indent=4)
             f.write('\n')
 
+    with open(FILE_ZONE, 'w', newline='\n') as f:
+        json.dump({item['zoneId']: item for item in read_table('Zone')}, f, indent=4)
+        f.write('\n')
 
-@safelogged()
+
+@errors.safelogged()
 def warriors_to_json() -> None:
-    warriors = {}
+    warriors: dict = {}
+
+    warriors['next'] = get_next_warrior()
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
 
         if table == 'Totd':
-            warriors[table] = sorted(warriors[table], key=lambda x: x['date'])
+            warriors[table] = sorted(warriors[table], key=lambda x: x['date'])  # todo: re-sort table to avoid this
 
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
         json.dump(warriors, f, indent=4)
         f.write('\n')
 
 
-@safelogged()
-def warriors_to_old_json() -> None:
-    warriors = {}
-
-    for table_type in ('Seasonal', 'Totd', 'Other'):
-        for map in read_table(f'Warrior{table_type}'):
-            map['uid'] = map['mapUid']
-            map.pop('mapUid')
-
-            if table_type == 'Seasonal':
-                map['clubId'] = 0
-            elif table_type == 'Other':
-                map['campaignIndex'] = map['mapIndex']
-                map.pop('mapIndex')
-
-            warriors[map['uid']] = dict(sorted(map.items()))
-
-    with open(FILE_WARRIOR_OLD, 'w', newline='\n') as f:
-        json.dump(warriors, f, indent=4)
-        f.write('\n')
-
-
-@safelogged()
-def write_db_key_val(key: str, val) -> None:
+@errors.safelogged()
+def write_timestamp(key: str, ts: int) -> None:
     with Cursor(FILE_DB) as db:
-        db.execute('CREATE TABLE IF NOT EXISTS KeyVals (key TEXT PRIMARY KEY, val TEXT);')
-        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("{key}", "{val}")')
-        db.execute(f'REPLACE INTO KeyVals (key, val) VALUES ("last_updated", "{stamp()}")')
+        db.execute('CREATE TABLE IF NOT EXISTS Timestamps (key TEXT PRIMARY KEY, ts INT, utc CHAR(19));')
+        db.execute(f'REPLACE INTO Timestamps (key, ts, utc) VALUES ("{key}", "{ts}", "{dt.datetime.fromtimestamp(ts, dt.UTC).strftime('%F %T')}");')

@@ -1,24 +1,87 @@
 # c 2025-01-27
-# m 2025-04-02
+# m 2025-08-15
 
-from nadeo_api import auth, core, oauth
+import datetime as dt
+import typing
 
-from errors import safelogged
-from files import Cursor
-from utils import *
+from nadeo_api import auth, core, live, oauth
+import requests
+
+from constants import *
+import errors
+import files
+import utils
 
 
 accounts: dict[str, dict] = {}
 
 
-@safelogged(str)
+@errors.safelogged(bool)
+def add_warriors_club_campaign(tokens: dict, club_id: int, campaign_id: int) -> bool:
+    campaign_info: dict = live.get_club_campaign(tokens['live'], club_id, campaign_id)
+    maps_by_uid: dict[str, dict] = {map['mapUid']: map for map in campaign_info['campaign']['playlist']}
+    maps_info: list[dict] = core.get_map_info(tokens['core'], list(maps_by_uid))
+    for map in maps_info:
+        map['position'] = maps_by_uid[map['mapUid']]['position']
+        req: dict = live.get_map_leaderboard(tokens['live'], map['mapUid'], length=10)
+        map['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
+    maps_sorted: list[dict] = sorted(maps_info, key=lambda x: x['position'])
+
+    with files.Cursor(FILE_DB) as db:
+        for map in maps_sorted:
+            db.execute(f'''
+                INSERT INTO WarriorOther (
+                    authorTime,
+                    campaignId,
+                    campaignName,
+                    clubId,
+                    clubName,
+                    goldTime,
+                    mapId,
+                    mapIndex,
+                    mapUid,
+                    name,
+                    warriorTime,
+                    worldRecord
+                ) VALUES (
+                    {map['authorScore']},
+                    {campaign_id},
+                    "{campaign_info['name']}",
+                    {club_id},
+                    "{campaign_info['clubName']}",
+                    {map['goldScore']},
+                    "{map['mapId']}",
+                    {map['position']},
+                    "{map['mapUid']}",
+                    "{map['name']}",
+                    {utils.calc_warrior_time(map['authorScore'], map['worldRecord'], 0.5)},
+                    {map['worldRecord']}
+                );
+            ''')
+
+    return True
+
+
+def add_warriors_club_campaigns(tokens: dict, club_id: int, campaign_ids: typing.Iterable[int]) -> bool:
+    ret: bool = True
+
+    for campaign_id in campaign_ids:
+        ret = ret and add_warriors_club_campaign(tokens, club_id, campaign_id)
+
+    return ret
+
+
+@errors.safelogged(str)
 def get_account_name(tokens: dict, account_id: str) -> str:
-    if account_id == 'd2372a08-a8a1-46cb-97fb-23a161d85ad0':
+    if account_id in (
+        'd2372a08-a8a1-46cb-97fb-23a161d85ad0',
+        'aa02b90e-0652-4a1c-b705-4677e2983003'
+    ):
         return 'Nadeo'
 
     global accounts
 
-    ts: int = stamp()
+    ts: int = utils.stamp()
 
     if account_id in accounts and ts < accounts[account_id]['ts']:
         return accounts[account_id]['name']
@@ -26,14 +89,11 @@ def get_account_name(tokens: dict, account_id: str) -> str:
     req: dict = {}
 
     try:
-        time.sleep(WAIT_TIME)
-        req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+        req = oauth.get_account_names_from_ids(tokens['oauth'], [account_id])
 
     except ValueError:
         tokens['oauth'] = get_token_oauth()
-
-        time.sleep(WAIT_TIME)
-        req = oauth.account_names_from_ids(tokens['oauth'], account_id)
+        req = oauth.get_account_names_from_ids(tokens['oauth'], [account_id])
 
     if not req or type(req) is not dict:
         raise ValueError(f'bad account ID: {account_id}')
@@ -41,53 +101,36 @@ def get_account_name(tokens: dict, account_id: str) -> str:
     name: str = req[account_id]
     accounts[account_id] = {}
     accounts[account_id]['name'] = name
-    accounts[account_id]['ts'] = ts + 60*60*24
+    accounts[account_id]['ts'] = ts + utils.weeks_to_seconds(1)
 
     return name
 
 
-@safelogged(bool)
+@errors.safelogged(bool)
 def get_map_infos(tokens: dict, table: str) -> bool:
-    UID_LIMIT: int = 270
-
     maps_by_uid: dict = {}
-    uid_groups:  list = []
-    uids:        list = []
 
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for entry in db.execute(f'SELECT * FROM {table}').fetchall():
             map: dict = dict(entry)
             maps_by_uid[map['mapUid']] = map
 
-    uids = list(maps_by_uid)
-    while True:
-        if len(uids) > UID_LIMIT:
-            uid_groups.append(','.join(uids[:UID_LIMIT]))
-            uids = uids[UID_LIMIT:]
-        else:
-            uid_groups.append(','.join(uids))
-            break
+    info: list[dict] = core.get_map_info(tokens['core'], list(maps_by_uid))
 
-    for i, group in enumerate(uid_groups):
-        log(f'info: get_map_info {i + 1}/{len(uid_groups)} groups...')
+    for entry in info:
+        map: dict = maps_by_uid[entry['mapUid']]
 
-        time.sleep(WAIT_TIME)
-        info: dict = core.get(tokens['core'], 'maps', {'mapUidList': group})
+        map['author']          = entry['author']
+        map['authorTime']      = entry['authorScore']
+        map['bronzeTime']      = entry['bronzeScore']
+        map['goldTime']        = entry['goldScore']
+        map['mapId']           = entry['mapId']
+        map['name']            = entry['name']
+        map['silverTime']      = entry['silverScore']
+        map['submitter']       = entry['submitter']
+        map['timestampUpload'] = int(dt.datetime.fromisoformat(entry['timestamp']).timestamp())
 
-        for entry in info:
-            map: dict = maps_by_uid[entry['mapUid']]
-
-            map['author']          = entry['author']
-            map['authorTime']      = entry['authorScore']
-            map['bronzeTime']      = entry['bronzeScore']
-            map['goldTime']        = entry['goldScore']
-            map['mapId']           = entry['mapId']
-            map['name']            = entry['name']
-            map['silverTime']      = entry['silverScore']
-            map['submitter']       = entry['submitter']
-            map['timestampUpload'] = int(dt.fromisoformat(entry['timestamp']).timestamp())
-
-    with Cursor(FILE_DB) as db:
+    with files.Cursor(FILE_DB) as db:
         for uid, map in maps_by_uid.items():
             db.execute(f'''
                 UPDATE {table}
@@ -107,8 +150,22 @@ def get_map_infos(tokens: dict, table: str) -> bool:
     return True
 
 
+@errors.safelogged(dict)
+def get_tmx_info(uid: str) -> dict:
+    req: requests.Response = requests.get(f'{TMX_BASE_URL}/api/maps?fields=MapId,Tags&uid={uid}', timeout=5)
+    utils.log(f'info: tmx req: {req.text}')
+    try:
+        data: dict = req.json()
+        return {
+            'id': data['Results'][0]['MapId'],
+            'tags': [tag['Name'] for tag in data['Results'][0]['Tags']]
+        }
+    except Exception:
+        return {}
+
+
 def get_token_core() -> auth.Token:
-    log('info: getting core token')
+    utils.log('info: getting core token')
     return auth.get_token(
         auth.audience_core,
         os.environ['TM_E416DEV_SERVER_USERNAME'],
@@ -119,7 +176,7 @@ def get_token_core() -> auth.Token:
 
 
 def get_token_live() -> auth.Token:
-    log('info: getting live token')
+    utils.log('info: getting live token')
     return auth.get_token(
         auth.audience_live,
         os.environ['TM_E416DEV_SERVER_USERNAME'],
@@ -130,7 +187,7 @@ def get_token_live() -> auth.Token:
 
 
 def get_token_oauth() -> auth.Token:
-    log('info: getting oauth token')
+    utils.log('info: getting oauth token')
     return auth.get_token(
         auth.audience_oauth,
         os.environ['TM_OAUTH_IDENTIFIER'],
@@ -138,7 +195,7 @@ def get_token_oauth() -> auth.Token:
     )
 
 
-def get_tokens() -> dict:
+def get_tokens() -> dict[str, auth.Token]:
     return {
         'core': get_token_core(),
         'live': get_token_live(),
