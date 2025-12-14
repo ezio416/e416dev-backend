@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-10-27
+# m 2025-12-14
 
 import multiprocessing
 import os
@@ -51,7 +51,7 @@ def backend() -> None:
             if any((
                 schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors, True),
                 schedules.schedule(tokens, 'totd',     schedules.totd_warrior,      webhooks.totd_warrior,      True),
-                schedules.schedule(tokens, 'weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors,   True),
+                # schedules.schedule(tokens, 'weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors,   True),
             )):
                 files.warriors_to_json()
                 github.send_warrior()
