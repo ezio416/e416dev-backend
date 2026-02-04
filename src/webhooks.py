@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-16
+# m 2026-02-04
 
 import time
 
@@ -140,7 +140,7 @@ def totd_warrior(tokens: dict) -> None:
 
 
 @errors.safelogged()
-def weekly(tokens: dict) -> None:
+def weekly_shorts(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
@@ -164,7 +164,7 @@ def weekly(tokens: dict) -> None:
 
 
 @errors.safelogged()
-def weekly_warriors(tokens: dict) -> None:
+def weekly_shorts_warriors(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:

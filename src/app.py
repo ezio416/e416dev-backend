@@ -1,5 +1,5 @@
 # c 2024-12-26
-# m 2025-12-14
+# m 2026-02-04
 
 import multiprocessing
 import os
@@ -40,18 +40,18 @@ def backend() -> None:
                     token.refresh()
 
             if any((
-                schedules.schedule(tokens, 'seasonal', schedules.seasonal, webhooks.seasonal),
-                schedules.schedule(tokens, 'totd',     schedules.totd,     webhooks.totd),
-                schedules.schedule(tokens, 'weekly',   schedules.weekly,   webhooks.weekly),
-                schedules.schedule(tokens, 'zone',     schedules.zone,     None)
+                schedules.schedule(tokens, 'seasonal', schedules.seasonal,      webhooks.seasonal),
+                schedules.schedule(tokens, 'totd',     schedules.totd,          webhooks.totd),
+                schedules.schedule(tokens, 'weekly',   schedules.weekly_shorts, webhooks.weekly_shorts),
+                schedules.schedule(tokens, 'zone',     schedules.zone,          None)
             )):
                 files.tables_to_json()
                 github.send_regular()
 
             if any((
-                schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors, webhooks.seasonal_warriors, True),
-                schedules.schedule(tokens, 'totd',     schedules.totd_warrior,      webhooks.totd_warrior,      True),
-                # schedules.schedule(tokens, 'weekly',   schedules.weekly_warriors,   webhooks.weekly_warriors,   True),
+                schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors,        webhooks.seasonal_warriors,      True),
+                schedules.schedule(tokens, 'totd',     schedules.totd_warrior,             webhooks.totd_warrior,           True),
+                # schedules.schedule(tokens, 'weekly',   schedules.weekly_shorts_warriors,   webhooks.weekly_shorts_warriors, True),
             )):
                 files.warriors_to_json()
                 github.send_warrior()

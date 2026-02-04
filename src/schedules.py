@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-10
+# m 2026-02-04
 
 import json
 import typing
@@ -345,10 +345,10 @@ def totd_warrior(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def weekly(tokens: dict) -> bool:
+def weekly_shorts(tokens: dict) -> bool:
     next_weekly: int = files.read_timestamp('next_weekly')
 
-    maps_weekly: dict = live.get_maps_weekly(tokens['live'], 144)
+    maps_weekly: dict = live.get_maps_weekly_short(tokens['live'], 144)
 
     if os.path.isfile(FILE_WEEKLY_RAW):
         with zipfile.ZipFile(
@@ -437,7 +437,7 @@ def weekly(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
-def weekly_warriors(tokens: dict) -> bool:
+def weekly_shorts_warriors(tokens: dict) -> bool:
     next_weekly: int = files.read_timestamp('next_weekly')
     if next_weekly == MAX_TIMESTAMP or next_weekly < utils.stamp():
         return False  # getting new weekly maps failed?
