@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-11-18
+# m 2026-02-04
 
 import csv
 
@@ -9,7 +9,9 @@ import api
 from constants import *
 import files
 import github
+import schedules
 import utils
+import webhooks
 
 
 def process_icy_f25() -> None:
@@ -169,6 +171,13 @@ def main() -> None:
 
     # api.add_warriors_club_campaign(api.get_tokens(), 65094, 104293)  # microk 6
     # warriors_to_github()
+
+    # tokens = api.get_tokens()
+    # grand = schedules.weekly_grands(tokens)
+    # weekly = schedules.weekly_shorts(tokens)
+    # webhooks.weekly_shorts(tokens)
+    # webhooks.weekly_grand(tokens)
+    # files.tables_to_json()
 
     pass
 

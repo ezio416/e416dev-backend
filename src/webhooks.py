@@ -140,6 +140,28 @@ def totd_warrior(tokens: dict) -> None:
 
 
 @errors.safelogged()
+def weekly_grand(tokens: dict) -> None:
+    map: dict = {}
+
+    with files.Cursor(FILE_DB) as db:
+        map = dict(db.execute('SELECT * FROM Grand ORDER BY week DESC, mapIndex ASC;').fetchone())
+
+    if not (account_name := api.get_account_name(tokens, map['author'])):
+        raise ValueError(f'no account name for {map['author']}')
+
+    execute_schedule(
+        os.environ['DCWH_TM_WEEKLY_UPDATES'],
+        dc.DiscordEmbed(
+            f'Weekly Grand #{map['number']}',
+            f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']\
+                })\nby [{account_name}](https://trackmania.io/#/player/{map['author']})',
+            color='DDDD33'
+        ),
+        map
+    )
+
+
+@errors.safelogged()
 def weekly_shorts(tokens: dict) -> None:
     maps: list[dict] = []
 

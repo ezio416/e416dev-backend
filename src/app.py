@@ -42,6 +42,7 @@ def backend() -> None:
             if any((
                 schedules.schedule(tokens, 'seasonal', schedules.seasonal,      webhooks.seasonal),
                 schedules.schedule(tokens, 'totd',     schedules.totd,          webhooks.totd),
+                schedules.schedule(tokens, 'grand',    schedules.weekly_grands, webhooks.weekly_grand),
                 schedules.schedule(tokens, 'weekly',   schedules.weekly_shorts, webhooks.weekly_shorts),
                 schedules.schedule(tokens, 'zone',     schedules.zone,          None)
             )):

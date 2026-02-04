@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-10
+# m 2026-02-04
 
 import os
 
@@ -23,6 +23,8 @@ MEDAL_WARRIOR:     str        = '<:MedalWarrior:1305798298690392155>'
 DIR_PARENT:        str = f'{os.path.dirname(__file__).replace('\\', '/')}/..'
 DIR_DATA:          str = f'{DIR_PARENT}/data'
 FILE_DB:           str = f'{DIR_DATA}/tm.db'
+FILE_GRAND:        str = f'{DIR_DATA}/grand.json'
+FILE_GRAND_RAW:    str = f'{DIR_DATA}/grand_raw.json'
 FILE_LOG:          str = f'{DIR_DATA}/tm.log'
 FILE_SEASONAL:     str = f'{DIR_DATA}/seasonal.json'
 FILE_SEASONAL_RAW: str = f'{DIR_DATA}/seasonal_raw.json'

@@ -345,6 +345,100 @@ def totd_warrior(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
+def weekly_grands(tokens: dict) -> bool:
+    next_grand: int = files.read_timestamp('next_grand')
+    if 0 < next_grand < MAX_TIMESTAMP:
+        files.write_timestamp('next_warrior_grand', next_grand + utils.days_to_seconds(2))
+
+    maps_grand: dict = live.get_maps_weekly_grand(tokens['live'], 144)
+
+    if os.path.isfile(FILE_GRAND_RAW):
+        with zipfile.ZipFile(
+            f'{DIR_DATA}/history/grand_raw_{utils.stamp()}.zip',
+            'w',
+            zipfile.ZIP_LZMA,
+            compresslevel=5
+        ) as zip:
+            zip.write(FILE_GRAND_RAW, 'grand_raw.json')
+
+    with open(FILE_GRAND_RAW, 'w', newline='\n') as f:
+        json.dump(maps_grand, f, indent=4)
+        f.write('\n')
+
+    TABLE: str = 'Grand'
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'DROP TABLE IF EXISTS {TABLE}')
+        db.execute(f'''
+            CREATE TABLE IF NOT EXISTS {TABLE} (
+                author               CHAR(36),
+                authorTime           INT,
+                bronzeTime           INT,
+                campaignId           INT,
+                goldTime             INT,
+                mapId                CHAR(36),
+                mapIndex             INT,
+                mapUid               VARCHAR(27) PRIMARY KEY,
+                name                 TEXT,
+                number               INT,
+                seasonUid            CHAR(36),
+                silverTime           INT,
+                submitter            CHAR(36),
+                timestampEdition     INT,
+                timestampEnd         INT,
+                timestampRankingSent INT,
+                timestampStart       INT,
+                timestampUpload      INT,
+                week                 INT,
+                year                 INT
+            );
+        ''')
+
+        for campaign in reversed(maps_grand['campaignList']):
+            sent: int | None = campaign['rankingSentTimestamp']
+
+            for map in campaign['playlist']:
+                db.execute(f'''
+                    INSERT INTO {TABLE} (
+                        campaignId,
+                        mapIndex,
+                        mapUid,
+                        number,
+                        seasonUid,
+                        timestampEdition,
+                        timestampEnd,
+                        timestampRankingSent,
+                        timestampStart,
+                        week,
+                        year
+                    ) VALUES (
+                        "{campaign['id']}",
+                        "{map['position']}",
+                        "{map['mapUid']}",
+                        "{(campaign['week'] - 1) + map['position'] + 1}",
+                        "{campaign['seasonUid']}",
+                        "{campaign['editionTimestamp']}",
+                        "{campaign['endTimestamp']}",
+                        {f'"{sent}"' if sent else 0},
+                        "{campaign['startTimestamp']}",
+                        "{campaign['week']}",
+                        "{campaign['year']}"
+                    );
+                ''')
+
+    if not api.get_map_infos(tokens, TABLE):
+        return False
+
+    if maps_grand['nextRequestTimestamp'] > 0:
+        files.write_timestamp('next_grand', maps_grand['nextRequestTimestamp'])
+    else:
+        files.write_timestamp('next_grand', next_grand + utils.weeks_to_seconds(1))
+        errors.notify(f'grand nextRequestTimestamp invalid: {maps_grand['nextRequestTimestamp']}')
+
+    return True
+
+
+@errors.safelogged(bool)
 def weekly_shorts(tokens: dict) -> bool:
     next_weekly: int = files.read_timestamp('next_weekly')
 

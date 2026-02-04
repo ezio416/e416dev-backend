@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-10-29
+# m 2026-02-04
 
 import datetime as dt
 import json
@@ -99,6 +99,7 @@ def read_timestamp(key: str) -> int:
 @errors.safelogged()
 def tables_to_json() -> None:
     for table_name, output_file in (
+        ('Grand',    FILE_GRAND),
         ('Seasonal', FILE_SEASONAL),
         ('Totd',     FILE_TOTD),
         ('Weekly',   FILE_WEEKLY),

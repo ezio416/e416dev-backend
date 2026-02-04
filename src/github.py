@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-11
+# m 2026-02-04
 
 import base64
 import hashlib
@@ -74,7 +74,7 @@ def _send_multi(files: tuple[str]) -> bool:
 
 @errors.safelogged(bool)
 def send_regular() -> bool:
-    return _send_multi((FILE_SEASONAL, FILE_TOTD, FILE_WEEKLY, FILE_ZONE))
+    return _send_multi((FILE_GRAND, FILE_SEASONAL, FILE_TOTD, FILE_WEEKLY, FILE_ZONE))
 
 
 @errors.safelogged(bool)
