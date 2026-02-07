@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-06
+# m 2026-02-07
 
 import datetime as dt
 import json
@@ -125,7 +125,7 @@ def warriors_to_json() -> None:
     with open(FILE_INDICES) as f:
         warriors['indices'] = json.load(f)
 
-    for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):  # TODO add grand
+    for table in ('Grand', 'Seasonal', 'Weekly', 'Totd', 'Other'):
         warriors[table] = read_table(f'Warrior{table}')
 
         if table == 'Totd':
