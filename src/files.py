@@ -132,7 +132,7 @@ def warriors_to_json() -> None:
             warriors[table] = sorted(warriors[table], key=lambda x: x['date'])  # TODO: re-sort table to avoid this
 
     with open(FILE_WARRIOR, 'w', newline='\n') as f:
-        json.dump(warriors, f, indent='\t')
+        json.dump(warriors, f, indent=4)
         f.write('\n')
 
 
