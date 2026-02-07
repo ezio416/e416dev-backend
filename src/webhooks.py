@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-06
+# m 2026-02-07
 
 import time
 
@@ -144,7 +144,7 @@ def weekly_grand(tokens: dict) -> None:
     map: dict = {}
 
     with files.Cursor(FILE_DB) as db:
-        map = dict(db.execute('SELECT * FROM Grand ORDER BY week DESC, mapIndex ASC;').fetchone())
+        map = dict(db.execute('SELECT * FROM Grand ORDER BY number DESC;').fetchone())
 
     if not (account_name := api.get_account_name(tokens, map['author'])):
         raise ValueError(f'no account name for {map['author']}')
