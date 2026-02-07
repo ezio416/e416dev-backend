@@ -1,5 +1,5 @@
 # c 2025-02-16
-# m 2025-11-04
+# m 2026-02-06
 
 import datetime as dt
 import time
@@ -33,7 +33,7 @@ def tm_warrior() -> flask.Response:
 
     if uid and 24 <= len(uid) <= 27:
         with files.Cursor(FILE_DB) as db:
-            for table in ('Totd', 'Weekly', 'Seasonal', 'Other'):  # check largest tables first
+            for table in ('Totd', 'Weekly', 'Seasonal', 'Other', 'Grand'):  # check largest tables first
                 try:
                     ret: dict = dict(db.execute(f'SELECT * FROM Warrior{table} WHERE mapUid = "{uid}"').fetchone())
                     ret['type'] = table
