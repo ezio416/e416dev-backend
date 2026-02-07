@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-04
+# m 2026-02-06
 
 import time
 
@@ -63,7 +63,7 @@ def seasonal(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
-        for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC').fetchmany(25):
+        for entry in db.execute('SELECT * FROM Seasonal ORDER BY campaignIndex DESC;').fetchmany(25):
             maps.append(dict(entry))
 
     for map in maps:
@@ -103,7 +103,7 @@ def seasonal_warriors(tokens: dict) -> None:
 @errors.safelogged()
 def totd(tokens: dict) -> None:
     with files.Cursor(FILE_DB) as db:
-        map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC').fetchone())
+        map: dict = dict(db.execute('SELECT * FROM Totd ORDER BY number DESC;').fetchone())
 
     if not (account_name := api.get_account_name(tokens, map['author'])):
         raise ValueError(f'no account name for {map['author']}')
@@ -124,7 +124,7 @@ def totd(tokens: dict) -> None:
 @errors.safelogged()
 def totd_warrior(tokens: dict) -> None:
     with files.Cursor(FILE_DB) as db:
-        map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC').fetchone())
+        map: dict = dict(db.execute('SELECT * FROM WarriorTotd ORDER BY date DESC;').fetchone())
 
     execute_warrior(
         os.environ['DCWH_TM_WARRIOR_UPDATES'],
@@ -164,7 +164,7 @@ def weekly_grand(tokens: dict) -> None:
 @errors.safelogged()
 def weekly_grand_warrior(tokens: dict) -> None:
     with files.Cursor(FILE_DB) as db:
-        map: dict = dict(db.execute('SELECT * FROM WarriorGrand ORDER BY number DESC').fetchone())
+        map: dict = dict(db.execute('SELECT * FROM WarriorGrand ORDER BY number DESC;').fetchone())
 
     execute_warrior(
         os.environ['DCWH_TM_WARRIOR_UPDATES'],
@@ -208,7 +208,7 @@ def weekly_shorts_warriors(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
-        for entry in reversed(db.execute('SELECT * FROM WarriorWeekly ORDER BY number DESC').fetchmany(5)):
+        for entry in reversed(db.execute('SELECT * FROM WarriorWeekly ORDER BY number DESC;').fetchmany(5)):
             maps.append(dict(entry))
 
     for map in maps:

@@ -90,13 +90,13 @@ def handle_tops(tops: list[dict], uid: str, name: str) -> int:
 @errors.safelogged(list, log=False)
 def read_table(table: str) -> list[dict]:
     with Cursor(FILE_DB) as db:
-        return [dict(item) for item in db.execute(f'SELECT * FROM {table}').fetchall()]
+        return [dict(item) for item in db.execute(f'SELECT * FROM {table};').fetchall()]
 
 
 @errors.safelogged(int, log=False)
 def read_timestamp(key: str) -> int:
     with Cursor(FILE_DB) as db:
-        return db.execute(f'SELECT * FROM Timestamps WHERE key = "{key}"').fetchone()[1]
+        return db.execute(f'SELECT * FROM Timestamps WHERE key = "{key}";').fetchone()[1]
 
 
 @errors.safelogged()

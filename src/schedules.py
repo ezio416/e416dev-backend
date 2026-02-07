@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-04
+# m 2026-02-06
 
 import json
 import typing
@@ -441,7 +441,7 @@ def weekly_grands(tokens: dict) -> bool:
 @errors.safelogged(bool)
 def weekly_grand_warrior(tokens: dict) -> bool:
     with files.Cursor(FILE_DB) as db:
-        map: dict = dict(db.execute('SELECT * FROM Grand ORDER BY number DESC').fetchone())
+        map: dict = dict(db.execute('SELECT * FROM Grand ORDER BY number DESC;').fetchone())
 
     utils.log(f'info: getting records for weekly grand #{map['number']}')
 
