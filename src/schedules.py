@@ -149,7 +149,22 @@ def seasonal_warriors(tokens: dict) -> bool:
         req: dict = live.get_map_leaderboard(tokens['live'], uid, length=10)
 
         maps[uid]['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
-        maps[uid]['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'])
+
+        factor: float = 0.25        # black
+        if map['mapIndex'] < 5:     # white
+            factor = 0.75
+        elif map['mapIndex'] < 10:  # green
+            factor = 0.625
+        elif map['mapIndex'] < 15:  # blue
+            factor = 0.5
+        elif map['mapIndex'] < 20:  # red
+            factor = 0.375
+
+        maps[uid]['warriorTime'] = utils.calc_warrior_time(
+            map['authorTime'],
+            map['worldRecord'],
+            factor
+        )
 
     with files.Cursor(FILE_DB) as db:
         db.execute(f'''
