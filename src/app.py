@@ -52,6 +52,7 @@ def backend() -> None:
             if any((
                 schedules.schedule(tokens, 'seasonal', schedules.seasonal_warriors,        webhooks.seasonal_warriors,      True),
                 schedules.schedule(tokens, 'totd',     schedules.totd_warrior,             webhooks.totd_warrior,           True),
+                schedules.schedule(tokens, 'grand',    schedules.weekly_grand_warrior,     webhooks.weekly_grand_warrior,   True),
                 # schedules.schedule(tokens, 'weekly',   schedules.weekly_shorts_warriors,   webhooks.weekly_shorts_warriors, True),
             )):
                 files.warriors_to_json()

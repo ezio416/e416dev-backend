@@ -439,6 +439,68 @@ def weekly_grands(tokens: dict) -> bool:
 
 
 @errors.safelogged(bool)
+def weekly_grand_warrior(tokens: dict) -> bool:
+    with files.Cursor(FILE_DB) as db:
+        map: dict = dict(db.execute('SELECT * FROM Grand ORDER BY number DESC').fetchone())
+
+    utils.log(f'info: getting records for weekly grand #{map['number']}')
+
+    req: dict = live.get_map_leaderboard(tokens['live'], map['mapUid'], length=10)
+
+    map['worldRecord'] = files.handle_tops(req['tops'][0]['top'], map['mapUid'], map['name'])
+    map['warriorTime'] = utils.calc_warrior_time(map['authorTime'], map['worldRecord'], 0.375)
+
+    with files.Cursor(FILE_DB) as db:
+        db.execute(f'''
+            CREATE TABLE IF NOT EXISTS WarriorGrand (
+                authorTime  INT,
+                mapUid      VARCHAR(27) PRIMARY KEY,
+                name        TEXT,
+                number      INT,
+                reason      TEXT,
+                warriorTime INT,
+                worldRecord INT,
+                mapId       CHAR(36),
+                goldTime    INT,
+                campaignId  INT,
+                week        INT
+            );
+        ''')
+
+        db.execute(f'''
+            INSERT INTO WarriorGrand (
+                authorTime,
+                mapUid,
+                name,
+                number,
+                reason,
+                warriorTime,
+                worldRecord,
+                mapId,
+                goldTime,
+                campaignId,
+                week
+            ) VALUES (
+                "{map['authorTime']}",
+                "{map['mapUid']}",
+                "{map['name']}",
+                "{map['number']}",
+                {f'"{map['reason']}"' if 'reason' in map and map['reason'] else 'NULL'},
+                "{map['warriorTime']}",
+                "{map['worldRecord']}",
+                "{map['mapId']}",
+                "{map['goldTime']}",
+                "{map['campaignId']}",
+                "{map['week']}"
+            );
+        ''')
+
+    files.write_timestamp('next_warrior_grand', files.read_timestamp('next_grand') + utils.days_to_seconds(2))
+
+    return True
+
+
+@errors.safelogged(bool)
 def weekly_shorts(tokens: dict) -> bool:
     next_weekly: int = files.read_timestamp('next_weekly')
 
