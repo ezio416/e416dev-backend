@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-04
+# m 2026-02-07
 
 import csv
 
@@ -178,6 +178,11 @@ def main() -> None:
     # webhooks.weekly_shorts(tokens)
     # webhooks.weekly_grand(tokens)
     # files.tables_to_json()
+    # files.warriors_to_json()
+    # schedules.weekly_grand_warrior(tokens)
+    # webhooks.weekly_grand(tokens)
+    # print(utils.calc_warrior_time(663942, 562727, 0.375))
+    # webhooks.weekly_grand_warrior(None)
 
     pass
 
