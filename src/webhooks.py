@@ -4,6 +4,7 @@
 import time
 
 import discord_webhook as dc
+from nadeo_api import auth, live
 
 import api
 from constants import *
@@ -36,14 +37,29 @@ def execute_schedule(url: str, embed: dc.DiscordEmbed, map: dict, tmx: dict = {}
     execute(webhook)
 
 
-def execute_warrior(url: str, embed: dc.DiscordEmbed, map: dict) -> None:
+def execute_warrior(url: str, embed: dc.DiscordEmbed, map: dict, token: auth.Token | None = None) -> None:
     at: int = map['authorTime']
     wm: int = map['warriorTime']
     wr: int = map['worldRecord']
 
     if wr <= wm:
+        top: int = 0
+
+        if token:
+            req = live.get(
+                token,
+                f'api/token/leaderboard/group/Personal_Best/map/{map['mapUid']}/surround/0/0?score={map['warriorTime']}&onlyWorld=true'
+            )
+
+            try:
+                top = int(req['tops'][0]['top'][0]['position'])
+            except Exception:
+                pass
+
         embed_str: str = f'🥇 {utils.format_race_time(wr)}'
         embed_str += f'\n{MEDAL_WARRIOR} **{utils.format_race_time(wm)}** *(+{utils.format_race_time(wm - wr)})*'
+        if top:
+            embed_str += f' *(top {top})*'
         embed_str += f'\n{MEDAL_AUTHOR} {utils.format_race_time(at)} *(+{utils.format_race_time(at - wm)})*'
 
     else:
@@ -94,7 +110,8 @@ def seasonal_warriors(tokens: dict) -> None:
                 f'[Trackmania.io](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=COLOR_WARRIOR
             ),
-            map
+            map,
+            tokens['live']
         )
 
     return True
@@ -133,7 +150,8 @@ def totd_warrior(tokens: dict) -> None:
             f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
             color=COLOR_WARRIOR
         ),
-        map
+        map,
+        tokens['live']
     )
 
     return True
@@ -173,7 +191,8 @@ def weekly_grand_warrior(tokens: dict) -> None:
             f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
             color=COLOR_WARRIOR
         ),
-        map
+        map,
+        tokens['live']
     )
 
     return True
@@ -219,7 +238,8 @@ def weekly_shorts_warriors(tokens: dict) -> None:
                 f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
                 color=COLOR_WARRIOR
             ),
-            map
+            map,
+        tokens['live']
         )
 
     return True
