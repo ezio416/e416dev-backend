@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-04
+# m 2026-02-06
 
 import datetime as dt
 import json
@@ -38,6 +38,9 @@ class Cursor:
 
 
 def get_next_warrior() -> int:
+    grand: int = read_timestamp('next_warrior_grand')
+    grand = grand if grand else MAX_TIMESTAMP
+
     seasonal: int = read_timestamp('next_warrior_seasonal')
     seasonal = seasonal if seasonal else MAX_TIMESTAMP
 
@@ -47,7 +50,7 @@ def get_next_warrior() -> int:
     weekly: int = read_timestamp('next_warrior_weekly')
     weekly = weekly if weekly else MAX_TIMESTAMP
 
-    return min(seasonal, totd, weekly)
+    return min(grand, seasonal, totd, weekly)
 
 
 @errors.safelogged(int)
