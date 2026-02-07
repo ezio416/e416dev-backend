@@ -150,6 +150,8 @@ def main() -> None:
     config.debug_logging = True
     config.wait_between_requests_ms = 500
 
+    tokens = api.get_tokens()
+
     # print(utils.calc_warrior_time(19294, 8272, 0.5))
     # process_u10s()
     # add_club_campaign_warriors(9, 35357)  # openplanet school
@@ -172,7 +174,6 @@ def main() -> None:
     # api.add_warriors_club_campaign(api.get_tokens(), 65094, 104293)  # microk 6
     # warriors_to_github()
 
-    # tokens = api.get_tokens()
     # grand = schedules.weekly_grands(tokens)
     # weekly = schedules.weekly_shorts(tokens)
     # webhooks.weekly_shorts(tokens)
@@ -183,6 +184,8 @@ def main() -> None:
     # webhooks.weekly_grand(tokens)
     # print(utils.calc_warrior_time(663942, 562727, 0.375))
     # webhooks.weekly_grand_warrior(None)
+
+    # webhooks.seasonal_warriors(tokens)
 
     pass
 
