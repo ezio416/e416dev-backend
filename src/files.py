@@ -125,7 +125,7 @@ def warriors_to_json() -> None:
     with open('data/indices.json') as f:
         warriors['indices'] = json.load(f)
 
-    for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):
+    for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):  # TODO add grand
         warriors[table] = read_table(f'Warrior{table}')
 
         if table == 'Totd':
