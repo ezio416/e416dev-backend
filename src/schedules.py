@@ -139,6 +139,10 @@ def seasonal_warriors(tokens: dict) -> bool:
             map: dict = dict(entry)
             maps[map['mapUid']] = map
 
+    for uid in maps.keys():  # just first one
+        campaignName: str = str(maps[uid]['name']).split(' - ')[0]
+        break
+
     for uid, map in maps.items():
         utils.log(f'info: getting records for "{map['name']}"')
 
@@ -150,19 +154,21 @@ def seasonal_warriors(tokens: dict) -> bool:
     with files.Cursor(FILE_DB) as db:
         db.execute(f'''
             CREATE TABLE IF NOT EXISTS WarriorSeasonal (
-                authorTime  INT,
-                campaignId  INT,
-                mapUid      VARCHAR(27) PRIMARY KEY,
-                name        TEXT,
-                reason      TEXT,
-                warriorTime INT,
-                worldRecord INT,
-                mapId       CHAR(36),
-                goldTime    INT
+                authorTime   INT,
+                campaignId   INT,
+                mapUid       VARCHAR(27) PRIMARY KEY,
+                name         TEXT,
+                reason       TEXT,
+                warriorTime  INT,
+                worldRecord  INT,
+                mapId        CHAR(36),
+                goldTime     INT,
+                campaignName TEXT,
+                mapIndex     INT
             );
         ''')
 
-        for uid, map in maps.items():
+        for i, (uid, map) in enumerate(maps.items()):
             db.execute(f'''
                 INSERT INTO WarriorSeasonal (
                     authorTime,
@@ -173,7 +179,9 @@ def seasonal_warriors(tokens: dict) -> bool:
                     warriorTime,
                     worldRecord,
                     mapId,
-                    goldTime
+                    goldTime,
+                    campaignName,
+                    mapIndex
                 ) VALUES (
                     "{map['authorTime']}",
                     "{map['campaignId']}",
@@ -183,7 +191,9 @@ def seasonal_warriors(tokens: dict) -> bool:
                     "{map['warriorTime']}",
                     "{map['worldRecord']}",
                     "{map['mapId']}",
-                    "{map['goldTime']}"
+                    "{map['goldTime']}",
+                    "{campaignName}",
+                    {i}
                 );
             ''')
 

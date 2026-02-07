@@ -83,7 +83,7 @@ def seasonal_warriors(tokens: dict) -> None:
     maps: list[dict] = []
 
     with files.Cursor(FILE_DB) as db:
-        for entry in db.execute('SELECT * FROM WarriorSeasonal ORDER BY campaignId DESC, name ASC;').fetchmany(25):
+        for entry in db.execute('SELECT * FROM WarriorSeasonal ORDER BY campaignId DESC, mapIndex ASC;').fetchmany(25):
             maps.append(dict(entry))
 
     for map in maps:
