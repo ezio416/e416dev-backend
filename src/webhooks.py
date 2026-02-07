@@ -162,6 +162,24 @@ def weekly_grand(tokens: dict) -> None:
 
 
 @errors.safelogged()
+def weekly_grand_warrior(tokens: dict) -> None:
+    with files.Cursor(FILE_DB) as db:
+        map: dict = dict(db.execute('SELECT * FROM WarriorGrand ORDER BY number DESC').fetchone())
+
+    execute_warrior(
+        os.environ['DCWH_TM_WARRIOR_UPDATES'],
+        dc.DiscordEmbed(
+            f'Weekly Grand #{map['number']}',
+            f'[{utils.strip_format_codes(map['name'])}](https://trackmania.io/#/leaderboard/{map['mapUid']})',
+            color=COLOR_WARRIOR
+        ),
+        map
+    )
+
+    return True
+
+
+@errors.safelogged()
 def weekly_shorts(tokens: dict) -> None:
     maps: list[dict] = []
 
