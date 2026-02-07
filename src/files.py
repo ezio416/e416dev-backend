@@ -122,7 +122,7 @@ def warriors_to_json() -> None:
 
     warriors['next'] = get_next_warrior()
 
-    with open('data/indices.json') as f:
+    with open(FILE_INDICES) as f:
         warriors['indices'] = json.load(f)
 
     for table in ('Seasonal', 'Weekly', 'Totd', 'Other'):  # TODO add grand
