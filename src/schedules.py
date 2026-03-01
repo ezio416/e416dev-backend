@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-06
+# m 2026-03-01
 
 import json
 import typing
@@ -308,7 +308,7 @@ def totd(tokens: dict) -> bool:
         files.write_timestamp('next_totd', maps_totd['nextRequestTimestamp'])
     else:
         files.write_timestamp('next_totd', next_totd + utils.days_to_seconds(1))
-        errors.notify(f'totd nextRequestTimestamp invalid: {maps_totd['nextRequestTimestamp']}')
+        errors.notify(f'totd nextRequestTimestamp invalid: {maps_totd['nextRequestTimestamp']}', False)
 
     return True
 

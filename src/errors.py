@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-09
+# m 2026-03-01
 
 import json
 import os
@@ -36,7 +36,7 @@ def clean_locals(locals: dict[str, str]) -> dict[str, str]:
     return locals
 
 
-def error(e: Exception, silent: bool = False) -> None:
+def error(e: Exception, silent: bool = False, ping: bool = True) -> None:
     locals: dict[str, dict[str, str]] = {}
 
     root_stack: list = []
@@ -66,7 +66,8 @@ def error(e: Exception, silent: bool = False) -> None:
     utils.log(f'error: eid-{id(e)} {tb_stack[-1]}')
 
     if not silent:
-        content: str = f'{DISCORD_USER_ROLE} `eid-{id(e)}`'
+        content: str = f'{DISCORD_USER_ROLE} ' if ping else ''
+        content += f'`eid-{id(e)}`'
         content += f'\n`{utils.now(False, False)}`'
         content += f'\n`{tb_stack[-1]}`'
         content += '\n```py'
@@ -83,11 +84,11 @@ def error(e: Exception, silent: bool = False) -> None:
         webhook.execute()
 
 
-def notify(msg: str) -> None:
+def notify(msg: str, ping: bool = True) -> None:
     try:
         raise Exception(msg)
     except Exception as e:
-        error(e)
+        error(e, ping)
 
 
 def safelogged(return_type: type = None, silent: bool = False, log: bool = True):
