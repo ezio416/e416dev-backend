@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-02-04
+# m 2026-03-01
 
 import base64
 import hashlib
@@ -67,9 +67,10 @@ def _send_multi(files: tuple[str]) -> bool:
         if req:
             if req.status_code == 200:
                 utils.log(f'info: sent {os.path.basename(file)}')
-                return True
             else:
                 raise ConnectionError(f'error: bad send req ({req.status_code}) for "{os.path.basename(file)}": {req.text}')
+
+    return True
 
 
 @errors.safelogged(bool)
