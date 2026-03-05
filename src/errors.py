@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-03-01
+# m 2026-03-05
 
 import json
 import os
@@ -88,7 +88,7 @@ def notify(msg: str, ping: bool = True) -> None:
     try:
         raise Exception(msg)
     except Exception as e:
-        error(e, ping)
+        error(e, ping=ping)
 
 
 def safelogged(return_type: type = None, silent: bool = False, log: bool = True):
