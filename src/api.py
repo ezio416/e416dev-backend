@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2025-08-15
+# m 2026-06-16
 
 import datetime as dt
 import typing
@@ -17,7 +17,7 @@ accounts: dict[str, dict] = {}
 
 
 @errors.safelogged(bool)
-def add_warriors_club_campaign(tokens: dict, club_id: int, campaign_id: int) -> bool:
+def add_warriors_club_campaign(tokens: dict, club_id: int, campaign_id: int, factor: float = 0.5) -> bool:
     campaign_info: dict = live.get_club_campaign(tokens['live'], club_id, campaign_id)
     maps_by_uid: dict[str, dict] = {map['mapUid']: map for map in campaign_info['campaign']['playlist']}
     maps_info: list[dict] = core.get_map_info(tokens['core'], list(maps_by_uid))
@@ -54,7 +54,7 @@ def add_warriors_club_campaign(tokens: dict, club_id: int, campaign_id: int) -> 
                     {map['position']},
                     "{map['mapUid']}",
                     "{map['name']}",
-                    {utils.calc_warrior_time(map['authorScore'], map['worldRecord'], 0.5)},
+                    {utils.calc_warrior_time(map['authorScore'], map['worldRecord'], factor)},
                     {map['worldRecord']}
                 );
             ''')
@@ -62,11 +62,11 @@ def add_warriors_club_campaign(tokens: dict, club_id: int, campaign_id: int) -> 
     return True
 
 
-def add_warriors_club_campaigns(tokens: dict, club_id: int, campaign_ids: typing.Iterable[int]) -> bool:
+def add_warriors_club_campaigns(tokens: dict, club_id: int, campaign_ids: typing.Iterable[int], factor: float = 0.5) -> bool:
     ret: bool = True
 
     for campaign_id in campaign_ids:
-        ret = ret and add_warriors_club_campaign(tokens, club_id, campaign_id)
+        ret = ret and add_warriors_club_campaign(tokens, club_id, campaign_id, factor)
 
     return ret
 
