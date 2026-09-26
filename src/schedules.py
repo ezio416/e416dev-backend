@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-03-01
+# m 2026-09-25
 
 import json
 import typing
@@ -304,11 +304,14 @@ def totd(tokens: dict) -> bool:
     if not api.get_map_infos(tokens, TABLE):
         return False
 
-    if maps_totd['nextRequestTimestamp'] > 0:
-        files.write_timestamp('next_totd', maps_totd['nextRequestTimestamp'])
+    expected_next_totd = next_totd + utils.days_to_seconds(1)
+    actual_next_totd = maps_totd['nextRequestTimestamp']
+
+    if 0 < actual_next_totd <= expected_next_totd:
+        files.write_timestamp('next_totd', actual_next_totd)
     else:
-        files.write_timestamp('next_totd', next_totd + utils.days_to_seconds(1))
-        errors.notify(f'totd nextRequestTimestamp invalid: {maps_totd['nextRequestTimestamp']}', False)
+        files.write_timestamp('next_totd', expected_next_totd)
+        errors.notify(f'totd nextRequestTimestamp invalid: {actual_next_totd}', False)
 
     return True
 
