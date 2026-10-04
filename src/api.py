@@ -139,7 +139,7 @@ def get_map_infos(tokens: dict, table: str) -> bool:
                     bronzeTime      = "{map['bronzeTime']}",
                     goldTime        = "{map['goldTime']}",
                     mapId           = "{map['mapId']}",
-                    name            = "{map['name']}",
+                    name            = "{str(map['name']).replace('"', '\"')}",
                     silverTime      = "{map['silverTime']}",
                     submitter       = "{map['submitter']}",
                     timestampUpload = "{map['timestampUpload']}"
