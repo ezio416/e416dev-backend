@@ -1,5 +1,5 @@
 # c 2025-01-27
-# m 2026-06-16
+# m 2026-10-18
 
 import datetime as dt
 import typing
@@ -139,7 +139,7 @@ def get_map_infos(tokens: dict, table: str) -> bool:
                     bronzeTime      = "{map['bronzeTime']}",
                     goldTime        = "{map['goldTime']}",
                     mapId           = "{map['mapId']}",
-                    name            = "{str(map['name']).replace('"', '\"')}",
+                    name            = "{str(map['name']).replace('"', '""')}",
                     silverTime      = "{map['silverTime']}",
                     submitter       = "{map['submitter']}",
                     timestampUpload = "{map['timestampUpload']}"
